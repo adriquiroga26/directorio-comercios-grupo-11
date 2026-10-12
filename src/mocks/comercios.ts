@@ -1,0 +1,331 @@
+import type { Comercio, Horario } from '@/tipos';
+
+// DATOS DE PRUEBA — todos los comercios son FICTICIOS.
+// Teléfonos con prefijo 000 (no existe), así nadie llama a un número real por error.
+// Coordenadas aproximadas al centro: no coinciden con la dirección exacta.
+// Fotos de relleno: Lorem Picsum (misma "seed" = misma foto siempre).
+
+type Dia = Horario['dia'];
+type Turno = [abre: string, cierra: string];
+
+// Arma los horarios de varios días con los mismos turnos.
+// Ej.: enDias([1, 2, 3], [['08:00', '12:00'], ['16:00', '20:00']])
+function enDias(
+  dias: Dia[],
+  turnos: Turno[],
+  temporada: Horario['temporada'] = 'habitual',
+): Horario[] {
+  return dias.flatMap((dia) =>
+    turnos.map(([abre, cierra]) => ({ dia, abre, cierra, temporada })),
+  );
+}
+
+// Turno mañana + tarde de lunes a viernes (horario habitual del PRD).
+function lunesAViernes(
+  manana: Turno,
+  tarde: Turno,
+  temporada: Horario['temporada'] = 'habitual',
+): Horario[] {
+  return enDias([1, 2, 3, 4, 5], [manana, tarde], temporada);
+}
+
+const sabadoMedioDia: Horario = { dia: 6, abre: '08:00', cierra: '13:00', temporada: 'habitual' };
+
+const foto = (seed: string) => `https://picsum.photos/seed/${seed}/600/400`;
+
+export const comerciosMock: Comercio[] = [
+  // Caso normal y completo (ejemplo del PRD, más horario de verano).
+  {
+    id: 'com-118',
+    nombre: 'Ferretería El Tornillo',
+    rubroId: 'rub-ferreteria',
+    descripcion: 'Ferretería de barrio con más de 40 años sobre 9 de Julio.',
+    direccion: '9 de Julio 855',
+    coordenadas: { latitud: -32.4835, longitud: -58.2312 },
+    telefono: '3442-000118',
+    whatsapp: '5493442000118',
+    instagram: '@eltornillocdelu',
+    imagenes: [foto('tornillo-1')],
+    videoUrl: 'https://api.ccu.org.ar/v/tornillo.mp4', // no carga hasta que exista la API
+    horarios: [
+      ...lunesAViernes(['08:00', '12:00'], ['16:30', '20:30']),
+      ...lunesAViernes(['08:00', '12:00'], ['17:30', '21:30'], 'verano'),
+      sabadoMedioDia,
+    ],
+    mediosDePago: ['efectivo', 'debito', 'transferencia'],
+    puntaje: 4.6,
+    cantidadResenas: 38,
+    codigoQr: 'CCU:com-118',
+    activo: true,
+    vacaciones: null,
+  },
+  {
+    id: 'com-201',
+    nombre: 'Panadería La Unión',
+    rubroId: 'rub-gastronomia',
+    descripcion: 'Panadería y confitería artesanal.',
+    direccion: 'Galarza 1120',
+    coordenadas: { latitud: -32.4851, longitud: -58.2334 },
+    telefono: '3442-000201',
+    whatsapp: '5493442000201',
+    instagram: '@panaderialaunion',
+    imagenes: [foto('launion-1'), foto('launion-2')],
+    videoUrl: null,
+    horarios: [
+      ...lunesAViernes(['07:00', '12:30'], ['16:30', '20:30']),
+      { dia: 6, abre: '07:00', cierra: '13:00', temporada: 'habitual' },
+    ],
+    mediosDePago: ['efectivo', 'debito'],
+    puntaje: 4.8,
+    cantidadResenas: 112,
+    codigoQr: 'CCU:com-201',
+    activo: true,
+    vacaciones: null,
+  },
+  // Caso feo: sin video ni fotos, sin teléfono ni redes, sin reseñas.
+  {
+    id: 'com-305',
+    nombre: 'Librería Don Quijote',
+    rubroId: 'rub-libreria',
+    descripcion: 'Útiles escolares y libros.',
+    direccion: 'Rocamora 640',
+    coordenadas: { latitud: -32.4809, longitud: -58.2289 },
+    telefono: null,
+    whatsapp: null,
+    instagram: null,
+    imagenes: [],
+    videoUrl: null,
+    horarios: lunesAViernes(['08:30', '12:00'], ['16:30', '20:00']),
+    mediosDePago: ['efectivo'],
+    puntaje: 0,
+    cantidadResenas: 0,
+    codigoQr: null,
+    activo: true,
+    vacaciones: null,
+  },
+  // Caso feo: cerrado por vacaciones.
+  // El rango incluye "hoy" hasta fin de año, para que el caso siga sirviendo
+  // durante toda la cursada. Si se prueba después del 31/12/2026, moverlo.
+  {
+    id: 'com-412',
+    nombre: 'Tienda Pequeños Pasos',
+    rubroId: 'rub-indumentaria',
+    descripcion: 'Ropa infantil, en pleno centro sobre 9 de Julio.',
+    direccion: '9 de Julio 1010',
+    coordenadas: { latitud: -32.4842, longitud: -58.2305 },
+    telefono: '3442-000412',
+    whatsapp: '5493442000412',
+    instagram: '@pequenospasoscdelu',
+    imagenes: [foto('pasos-1')],
+    videoUrl: 'https://api.ccu.org.ar/v/pasos.mp4', // no carga hasta que exista la API
+    horarios: lunesAViernes(['09:00', '12:30'], ['16:30', '20:30']),
+    mediosDePago: ['efectivo', 'debito', 'credito'],
+    puntaje: 4.2,
+    cantidadResenas: 9,
+    codigoQr: 'CCU:com-412',
+    activo: true,
+    vacaciones: {
+      desde: '2026-09-20T00:00:00-03:00',
+      hasta: '2026-12-31T23:59:00-03:00',
+    },
+  },
+  // Caso feo: la imagen apunta a la API, que todavía no existe.
+  // Queda rota A PROPÓSITO, para probar qué muestra la app cuando una foto no carga.
+  {
+    id: 'com-530',
+    nombre: 'Farmacia Central',
+    rubroId: 'rub-salud',
+    descripcion: 'Farmacia y perfumería.',
+    direccion: 'Sarmiento 300',
+    coordenadas: { latitud: -32.4868, longitud: -58.2351 },
+    telefono: '3442-000530',
+    whatsapp: '5493442000530',
+    instagram: null,
+    imagenes: ['https://api.ccu.org.ar/img/central-1.jpg'],
+    videoUrl: null,
+    horarios: lunesAViernes(['08:00', '12:30'], ['16:30', '20:30']),
+    mediosDePago: ['efectivo', 'debito', 'credito', 'transferencia'],
+    puntaje: 4.4,
+    cantidadResenas: 57,
+    codigoQr: 'CCU:com-530',
+    activo: true,
+    vacaciones: null,
+  },
+  // Caso normal: abre de lunes a sábado de corrido.
+  {
+    id: 'com-601',
+    nombre: 'Café del Puerto',
+    rubroId: 'rub-gastronomia',
+    descripcion: 'Cafetería con medialunas caseras, tostados y licuados. Mesas en la vereda.',
+    direccion: '9 de Julio 850',
+    coordenadas: { latitud: -32.4837, longitud: -58.2315 },
+    telefono: '3442-000101',
+    whatsapp: '5493442000101',
+    instagram: '@cafedelpuerto.cdu',
+    imagenes: [foto('cafe-puerto')],
+    videoUrl: null,
+    horarios: enDias([1, 2, 3, 4, 5, 6], [['07:30', '21:00']]),
+    mediosDePago: ['efectivo', 'debito', 'credito', 'mercadopago'],
+    puntaje: 4.5,
+    cantidadResenas: 64,
+    codigoQr: 'CCU:com-601',
+    activo: true,
+    vacaciones: null,
+  },
+  // Caso: mediodía y noche, abre domingo y cierra los lunes.
+  {
+    id: 'com-602',
+    nombre: 'La Cantina de Rocamora',
+    rubroId: 'rub-gastronomia',
+    descripcion: 'Pastas caseras, minutas y menú del día al mediodía.',
+    direccion: 'Rocamora 720',
+    coordenadas: { latitud: -32.4812, longitud: -58.2294 },
+    telefono: '3442-000102',
+    whatsapp: '5493442000102',
+    instagram: '@lacantinarocamora',
+    imagenes: [foto('cantina-1'), foto('cantina-2')],
+    videoUrl: null,
+    horarios: enDias([2, 3, 4, 5, 6, 0], [['12:00', '15:00'], ['20:00', '23:30']]),
+    mediosDePago: ['efectivo', 'debito', 'credito', 'transferencia'],
+    puntaje: 4.3,
+    cantidadResenas: 27,
+    codigoQr: 'CCU:com-602',
+    activo: true,
+    vacaciones: null,
+  },
+  // Caso: sin WhatsApp ni redes (la UI no debe mostrar esos botones).
+  {
+    id: 'com-603',
+    nombre: 'Farmacia del Parque',
+    rubroId: 'rub-salud',
+    descripcion: 'Farmacia de barrio con preparados magistrales.',
+    direccion: 'Alem 230',
+    coordenadas: { latitud: -32.4859, longitud: -58.2362 },
+    telefono: '3442-000105',
+    whatsapp: null,
+    instagram: null,
+    imagenes: [foto('farmacia-parque')],
+    videoUrl: null,
+    horarios: [
+      ...lunesAViernes(['08:00', '12:30'], ['16:30', '20:30']),
+      { dia: 6, abre: '08:00', cierra: '12:30', temporada: 'habitual' },
+    ],
+    mediosDePago: ['efectivo', 'debito', 'credito'],
+    puntaje: 4.1,
+    cantidadResenas: 15,
+    codigoQr: 'CCU:com-603',
+    activo: true,
+    vacaciones: null,
+  },
+  // Caso: con horario de verano.
+  {
+    id: 'com-604',
+    nombre: 'Punto Sport',
+    rubroId: 'rub-indumentaria',
+    descripcion: 'Zapatillas, ropa deportiva y camisetas de clubes.',
+    direccion: 'Rocamora 910',
+    coordenadas: { latitud: -32.482, longitud: -58.2301 },
+    telefono: '3442-000107',
+    whatsapp: '5493442000107',
+    instagram: '@puntosport.cdu',
+    imagenes: [foto('punto-sport')],
+    videoUrl: null,
+    horarios: [
+      ...lunesAViernes(['09:00', '13:00'], ['17:00', '21:00']),
+      ...lunesAViernes(['09:00', '13:00'], ['18:00', '22:00'], 'verano'),
+      { dia: 6, abre: '09:00', cierra: '13:00', temporada: 'habitual' },
+    ],
+    mediosDePago: ['efectivo', 'debito', 'credito', 'mercadopago'],
+    puntaje: 3.9,
+    cantidadResenas: 21,
+    codigoQr: 'CCU:com-604',
+    activo: true,
+    vacaciones: null,
+  },
+  {
+    id: 'com-605',
+    nombre: 'Librería Rincón de Papel',
+    rubroId: 'rub-libreria',
+    descripcion: 'Artículos escolares, fotocopias, impresiones y libros.',
+    direccion: 'Mitre 180',
+    coordenadas: { latitud: -32.4846, longitud: -58.2328 },
+    telefono: '3442-000108',
+    whatsapp: '5493442000108',
+    instagram: '@rincondepapel',
+    imagenes: [foto('rincon-papel')],
+    videoUrl: null,
+    horarios: lunesAViernes(['08:30', '12:30'], ['16:30', '20:30']),
+    mediosDePago: ['efectivo', 'debito', 'transferencia'],
+    puntaje: 4.7,
+    cantidadResenas: 40,
+    codigoQr: 'CCU:com-605',
+    activo: true,
+    vacaciones: null,
+  },
+  // Caso: comercio INACTIVO. listarComercios() no lo tiene que devolver.
+  {
+    id: 'com-606',
+    nombre: 'El Aula',
+    rubroId: 'rub-libreria',
+    descripcion: 'Librería técnica y universitaria. Pedidos por encargo.',
+    direccion: 'Rivadavia 95',
+    coordenadas: { latitud: -32.4829, longitud: -58.234 },
+    telefono: '3442-000109',
+    whatsapp: null,
+    instagram: null,
+    imagenes: [],
+    videoUrl: null,
+    horarios: lunesAViernes(['08:00', '13:00'], ['16:00', '20:00']),
+    mediosDePago: ['efectivo', 'transferencia'],
+    puntaje: 0,
+    cantidadResenas: 0,
+    codigoQr: null,
+    activo: false,
+    vacaciones: null,
+  },
+  // Caso: abre también el domingo a la mañana.
+  {
+    id: 'com-607',
+    nombre: 'Almacén Doña Rosa',
+    rubroId: 'rub-almacen',
+    descripcion: 'Almacén, fiambrería y verdulería. Pedidos por WhatsApp.',
+    direccion: 'Perón 410',
+    coordenadas: { latitud: -32.4875, longitud: -58.238 },
+    telefono: '3442-000110',
+    whatsapp: '5493442000110',
+    instagram: null,
+    imagenes: [foto('almacen-rosa')],
+    videoUrl: null,
+    horarios: [
+      ...enDias([1, 2, 3, 4, 5, 6], [['07:00', '13:00'], ['16:30', '21:30']]),
+      { dia: 0, abre: '08:00', cierra: '13:00', temporada: 'habitual' },
+    ],
+    mediosDePago: ['efectivo', 'debito', 'mercadopago'],
+    puntaje: 4.9,
+    cantidadResenas: 83,
+    codigoQr: 'CCU:com-607',
+    activo: true,
+    vacaciones: null,
+  },
+  // Caso: solo de tarde/noche, todos los días, solo efectivo, sin teléfono fijo.
+  {
+    id: 'com-608',
+    nombre: 'Heladería Río Helado',
+    rubroId: 'rub-gastronomia',
+    descripcion: 'Helado artesanal, palitos y postres helados. Envíos a domicilio.',
+    direccion: '9 de Julio 720',
+    coordenadas: { latitud: -32.4833, longitud: -58.232 },
+    telefono: null,
+    whatsapp: '5493442000113',
+    instagram: '@riohelado',
+    imagenes: [foto('rio-helado')],
+    videoUrl: null,
+    horarios: enDias([0, 1, 2, 3, 4, 5, 6], [['14:00', '23:30']]),
+    mediosDePago: ['efectivo'],
+    puntaje: 4.6,
+    cantidadResenas: 51,
+    codigoQr: 'CCU:com-608',
+    activo: true,
+    vacaciones: null,
+  },
+];
