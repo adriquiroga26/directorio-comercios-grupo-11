@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { Link, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { FlatList, Pressable, SectionList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -150,7 +150,14 @@ export default function PromosScreen() {
             </ThemedText>
           )}
           renderItem={({ item }) => (
-            <TarjetaPromocion promocion={item} comercio={comercioPorId.get(item.comercioId) ?? null} />
+            <Link href={`/promociones/${item.id}`} asChild>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Ver la promoción ${item.titulo}`}>
+                <TarjetaPromocion
+                  promocion={item}
+                  comercio={comercioPorId.get(item.comercioId) ?? null}
+                />
+              </Pressable>
+            </Link>
           )}
         />
       )}

@@ -1,4 +1,4 @@
-import type { Promocion } from '@/tipos';
+import type { Promocion, UsoDePromocion } from '@/tipos';
 import { estadoPromocion } from '@/utilidades/promociones';
 
 import { pedir } from './cliente';
@@ -23,5 +23,18 @@ export async function listarPromociones(): Promise<Promocion[]> {
 // casos llega un ErrorApi con el mensaje para mostrar.
 export async function obtenerPromocion(id: string): Promise<Promocion> {
   const { datos } = await pedir<Promocion>(`/promociones/${encodeURIComponent(id)}`);
+  return datos;
+}
+
+// El vecino pide su código para usar una promo exclusiva de la app (`soloApp`).
+// La API lo genera y es el que se muestra en el mostrador. Si ya había pedido uno
+// que todavía no se usó, devuelve el mismo. Hace falta una cuenta de vecino.
+// Errores posibles (con mensaje para mostrar): PROMO_SIN_CODIGO, PROMO_VENCIDA,
+// PROMO_NO_EMPEZO, PROMO_YA_USADA, NO_AUTENTICADO y SIN_PERMISO.
+export async function generarCodigo(promocionId: string): Promise<UsoDePromocion> {
+  const { datos } = await pedir<UsoDePromocion>(
+    `/promociones/${encodeURIComponent(promocionId)}/usos`,
+    { metodo: 'POST' },
+  );
   return datos;
 }

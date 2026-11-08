@@ -32,6 +32,7 @@ function Navegacion() {
       <Stack.Protected guard={estado !== 'bloqueada'}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="comercios/[id]" />
+        <Stack.Screen name="promociones/[id]" />
       </Stack.Protected>
     </Stack>
   );
