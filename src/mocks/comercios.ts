@@ -10,31 +10,21 @@ type Turno = [abre: string, cierra: string];
 
 // Arma los horarios de varios días con los mismos turnos.
 // Ej.: enDias([1, 2, 3], [['08:00', '12:00'], ['16:00', '20:00']])
-function enDias(
-  dias: Dia[],
-  turnos: Turno[],
-  temporada: Horario['temporada'] = 'habitual',
-): Horario[] {
-  return dias.flatMap((dia) =>
-    turnos.map(([abre, cierra]) => ({ dia, abre, cierra, temporada })),
-  );
+function enDias(dias: Dia[], turnos: Turno[]): Horario[] {
+  return dias.flatMap((dia) => turnos.map(([abre, cierra]) => ({ dia, abre, cierra })));
 }
 
 // Turno mañana + tarde de lunes a viernes (horario habitual del PRD).
-function lunesAViernes(
-  manana: Turno,
-  tarde: Turno,
-  temporada: Horario['temporada'] = 'habitual',
-): Horario[] {
-  return enDias([1, 2, 3, 4, 5], [manana, tarde], temporada);
+function lunesAViernes(manana: Turno, tarde: Turno): Horario[] {
+  return enDias([1, 2, 3, 4, 5], [manana, tarde]);
 }
 
-const sabadoMedioDia: Horario = { dia: 6, abre: '08:00', cierra: '13:00', temporada: 'habitual' };
+const sabadoMedioDia: Horario = { dia: 6, abre: '08:00', cierra: '13:00' };
 
 const foto = (seed: string) => `https://picsum.photos/seed/${seed}/600/400`;
 
 export const comerciosMock: Comercio[] = [
-  // Caso normal y completo (ejemplo del PRD, más horario de verano).
+  // Caso normal y completo (ejemplo del PRD).
   {
     id: 'com-118',
     nombre: 'Ferretería El Tornillo',
@@ -49,7 +39,6 @@ export const comerciosMock: Comercio[] = [
     videoUrl: 'https://api.ccu.org.ar/v/tornillo.mp4', // no carga hasta que exista la API
     horarios: [
       ...lunesAViernes(['08:00', '12:00'], ['16:30', '20:30']),
-      ...lunesAViernes(['08:00', '12:00'], ['17:30', '21:30'], 'verano'),
       sabadoMedioDia,
     ],
     mediosDePago: ['efectivo', 'debito', 'transferencia'],
@@ -57,7 +46,6 @@ export const comerciosMock: Comercio[] = [
     cantidadResenas: 38,
     codigoQr: 'CCU:com-118',
     activo: true,
-    vacaciones: null,
   },
   {
     id: 'com-201',
@@ -73,14 +61,13 @@ export const comerciosMock: Comercio[] = [
     videoUrl: null,
     horarios: [
       ...lunesAViernes(['07:00', '12:30'], ['16:30', '20:30']),
-      { dia: 6, abre: '07:00', cierra: '13:00', temporada: 'habitual' },
+      { dia: 6, abre: '07:00', cierra: '13:00' },
     ],
     mediosDePago: ['efectivo', 'debito'],
     puntaje: 4.8,
     cantidadResenas: 112,
     codigoQr: 'CCU:com-201',
     activo: true,
-    vacaciones: null,
   },
   // Caso feo: sin video ni fotos, sin teléfono ni redes, sin reseñas.
   {
@@ -101,11 +88,9 @@ export const comerciosMock: Comercio[] = [
     cantidadResenas: 0,
     codigoQr: null,
     activo: true,
-    vacaciones: null,
   },
-  // Caso feo: cerrado por vacaciones.
-  // El rango incluye "hoy" hasta fin de año, para que el caso siga sirviendo
-  // durante toda la cursada. Si se prueba después del 31/12/2026, moverlo.
+  // Caso feo: cerrado por vacaciones. La API lo representa con `horarios: []`
+  // (decisión D2 de la cátedra): sin horarios, el comercio figura como cerrado.
   {
     id: 'com-412',
     nombre: 'Tienda Pequeños Pasos',
@@ -118,16 +103,12 @@ export const comerciosMock: Comercio[] = [
     instagram: '@pequenospasoscdelu',
     imagenes: [foto('pasos-1')],
     videoUrl: 'https://api.ccu.org.ar/v/pasos.mp4', // no carga hasta que exista la API
-    horarios: lunesAViernes(['09:00', '12:30'], ['16:30', '20:30']),
+    horarios: [],
     mediosDePago: ['efectivo', 'debito', 'credito'],
     puntaje: 4.2,
     cantidadResenas: 9,
     codigoQr: 'CCU:com-412',
     activo: true,
-    vacaciones: {
-      desde: '2026-09-20T00:00:00-03:00',
-      hasta: '2026-12-31T23:59:00-03:00',
-    },
   },
   // Caso feo: la imagen apunta a la API, que todavía no existe.
   // Queda rota A PROPÓSITO, para probar qué muestra la app cuando una foto no carga.
@@ -149,7 +130,6 @@ export const comerciosMock: Comercio[] = [
     cantidadResenas: 57,
     codigoQr: 'CCU:com-530',
     activo: true,
-    vacaciones: null,
   },
   // Caso normal: abre de lunes a sábado de corrido.
   {
@@ -165,12 +145,11 @@ export const comerciosMock: Comercio[] = [
     imagenes: [foto('cafe-puerto')],
     videoUrl: null,
     horarios: enDias([1, 2, 3, 4, 5, 6], [['07:30', '21:00']]),
-    mediosDePago: ['efectivo', 'debito', 'credito', 'mercadopago'],
+    mediosDePago: ['efectivo', 'debito', 'credito', 'billetera_virtual'],
     puntaje: 4.5,
     cantidadResenas: 64,
     codigoQr: 'CCU:com-601',
     activo: true,
-    vacaciones: null,
   },
   // Caso: mediodía y noche, abre domingo y cierra los lunes.
   {
@@ -191,7 +170,6 @@ export const comerciosMock: Comercio[] = [
     cantidadResenas: 27,
     codigoQr: 'CCU:com-602',
     activo: true,
-    vacaciones: null,
   },
   // Caso: sin WhatsApp ni redes (la UI no debe mostrar esos botones).
   {
@@ -208,16 +186,15 @@ export const comerciosMock: Comercio[] = [
     videoUrl: null,
     horarios: [
       ...lunesAViernes(['08:00', '12:30'], ['16:30', '20:30']),
-      { dia: 6, abre: '08:00', cierra: '12:30', temporada: 'habitual' },
+      { dia: 6, abre: '08:00', cierra: '12:30' },
     ],
     mediosDePago: ['efectivo', 'debito', 'credito'],
     puntaje: 4.1,
     cantidadResenas: 15,
     codigoQr: 'CCU:com-603',
     activo: true,
-    vacaciones: null,
   },
-  // Caso: con horario de verano.
+  // Caso: horario cortado, con la tarde más tarde.
   {
     id: 'com-604',
     nombre: 'Punto Sport',
@@ -232,15 +209,13 @@ export const comerciosMock: Comercio[] = [
     videoUrl: null,
     horarios: [
       ...lunesAViernes(['09:00', '13:00'], ['17:00', '21:00']),
-      ...lunesAViernes(['09:00', '13:00'], ['18:00', '22:00'], 'verano'),
-      { dia: 6, abre: '09:00', cierra: '13:00', temporada: 'habitual' },
+      { dia: 6, abre: '09:00', cierra: '13:00' },
     ],
-    mediosDePago: ['efectivo', 'debito', 'credito', 'mercadopago'],
+    mediosDePago: ['efectivo', 'debito', 'credito', 'billetera_virtual'],
     puntaje: 3.9,
     cantidadResenas: 21,
     codigoQr: 'CCU:com-604',
     activo: true,
-    vacaciones: null,
   },
   {
     id: 'com-605',
@@ -260,7 +235,6 @@ export const comerciosMock: Comercio[] = [
     cantidadResenas: 40,
     codigoQr: 'CCU:com-605',
     activo: true,
-    vacaciones: null,
   },
   // Caso: comercio INACTIVO. listarComercios() no lo tiene que devolver.
   {
@@ -281,13 +255,12 @@ export const comerciosMock: Comercio[] = [
     cantidadResenas: 0,
     codigoQr: null,
     activo: false,
-    vacaciones: null,
   },
   // Caso: abre también el domingo a la mañana.
   {
     id: 'com-607',
     nombre: 'Almacén Doña Rosa',
-    rubroId: 'rub-almacen',
+    rubroId: 'rub-otros',
     descripcion: 'Almacén, fiambrería y verdulería. Pedidos por WhatsApp.',
     direccion: 'Perón 410',
     coordenadas: { latitud: -32.4875, longitud: -58.238 },
@@ -298,14 +271,13 @@ export const comerciosMock: Comercio[] = [
     videoUrl: null,
     horarios: [
       ...enDias([1, 2, 3, 4, 5, 6], [['07:00', '13:00'], ['16:30', '21:30']]),
-      { dia: 0, abre: '08:00', cierra: '13:00', temporada: 'habitual' },
+      { dia: 0, abre: '08:00', cierra: '13:00' },
     ],
-    mediosDePago: ['efectivo', 'debito', 'mercadopago'],
+    mediosDePago: ['efectivo', 'debito', 'billetera_virtual'],
     puntaje: 4.9,
     cantidadResenas: 83,
     codigoQr: 'CCU:com-607',
     activo: true,
-    vacaciones: null,
   },
   // Caso: solo de tarde/noche, todos los días, solo efectivo, sin teléfono fijo.
   {
@@ -326,6 +298,5 @@ export const comerciosMock: Comercio[] = [
     cantidadResenas: 51,
     codigoQr: 'CCU:com-608',
     activo: true,
-    vacaciones: null,
   },
 ];

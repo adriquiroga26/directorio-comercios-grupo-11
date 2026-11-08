@@ -18,7 +18,7 @@ import {
   obtenerComercio,
   type ResenaConAutor,
 } from '@/servicios';
-import type { Comercio, Rubro } from '@/tipos';
+import type { Comercio, MedioDePago, Rubro } from '@/tipos';
 import { calcularApertura, resumenSemanal, textoApertura } from '@/utilidades/horarios';
 
 type Estado = 'cargando' | 'error' | 'listo';
@@ -28,6 +28,17 @@ type Estado = 'cargando' | 'error' | 'listo';
 type NombreIcono = ComponentProps<typeof Ionicons>['name'];
 
 const ALTO_MEDIA = 220;
+
+// La API manda ids como "billetera_virtual"; en pantalla va el texto legible.
+// Record<MedioDePago, string> obliga a tener una etiqueta por cada medio:
+// si se agrega uno al tipo, TypeScript avisa que falta acá.
+const ETIQUETA_MEDIO_DE_PAGO: Record<MedioDePago, string> = {
+  efectivo: 'Efectivo',
+  debito: 'Débito',
+  credito: 'Crédito',
+  transferencia: 'Transferencia',
+  billetera_virtual: 'Billetera virtual',
+};
 
 export default function FichaComercioScreen() {
   // useLocalSearchParams siempre entrega strings (o arrays de strings).
@@ -222,7 +233,7 @@ export default function FichaComercioScreen() {
                       contentContainerStyle={styles.filaChips}
                       renderItem={({ item }) => (
                         <View style={[styles.chip, { backgroundColor: theme.backgroundElement }]}>
-                          <ThemedText type="small">{item}</ThemedText>
+                          <ThemedText type="small">{ETIQUETA_MEDIO_DE_PAGO[item]}</ThemedText>
                         </View>
                       )}
                     />

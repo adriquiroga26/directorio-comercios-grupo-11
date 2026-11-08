@@ -23,7 +23,7 @@ type NombreIcono = ComponentProps<typeof Ionicons>['name'];
 const LADO_IMAGEN = 72;
 
 // Color del texto de apertura: verde si está abierto, gris para el resto de
-// los estados (cerrado, de vacaciones, inactivo). No hace falta distinguir
+// los estados (cerrado, inactivo). No hace falta distinguir
 // más que eso en la lista; la ficha del comercio sí lo explica en detalle.
 function colorEstado(abierto: boolean, colorAtenuado: string): string {
   return abierto ? '#2E9E5B' : colorAtenuado;

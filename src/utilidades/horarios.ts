@@ -1,4 +1,4 @@
-import type { Comercio, Horario, Temporada } from '@/tipos';
+import type { Comercio, Horario } from '@/tipos';
 
 // "Abierto ahora" NO es un dato de la API: se calcula acá con la hora del
 // dispositivo. Son funciones puras (reciben la fecha por parámetro) para
@@ -10,14 +10,7 @@ const OFFSET_ARGENTINA_MS = -3 * 60 * 60 * 1000;
 
 export const NOMBRES_DIA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
-// SUPUESTO PROVISORIO: el PRD dice "en verano" sin fechas. Se toma diciembre a febrero.
-// Confirmar con el cliente / la API de la cátedra.
-export function temporadaDe(ahora: Date): Temporada {
-  const mes = new Date(ahora.getTime() + OFFSET_ARGENTINA_MS).getUTCMonth(); // 0 = enero
-  return mes === 11 || mes === 0 || mes === 1 ? 'verano' : 'habitual';
-}
-
-export type EstadoApertura = 'abierto' | 'cerrado' | 'vacaciones' | 'inactivo';
+export type EstadoApertura = 'abierto' | 'cerrado' | 'inactivo';
 
 export interface ProximaApertura {
   dia: Horario['dia'];
@@ -30,7 +23,6 @@ export interface ResultadoApertura {
   abierto: boolean;
   cierraA: string | null; // sólo si está abierto
   proximaApertura: ProximaApertura | null; // sólo si está cerrado
-  vuelveEl: string | null; // ISO, sólo si está de vacaciones
 }
 
 function aMinutos(hhmm: string): number {
@@ -43,37 +35,20 @@ function cruzaMedianoche(h: Horario): boolean {
   return aMinutos(h.cierra) <= aMinutos(h.abre);
 }
 
-// Si el comercio tiene tramos cargados para la temporada actual se usan sólo esos;
-// si no tiene ninguno para esa temporada, se usan los habituales.
-export function horariosVigentes(horarios: Horario[], temporada: Temporada): Horario[] {
-  const deTemporada = horarios.filter((h) => h.temporada === temporada);
-  return deTemporada.length > 0 ? deTemporada : horarios.filter((h) => h.temporada === 'habitual');
-}
-
-export function calcularApertura(
-  comercio: Comercio,
-  ahora: Date = new Date(),
-  temporada: Temporada = temporadaDe(ahora),
-): ResultadoApertura {
-  const base = { abierto: false, cierraA: null, proximaApertura: null, vuelveEl: null };
+export function calcularApertura(comercio: Comercio, ahora: Date = new Date()): ResultadoApertura {
+  const base = { abierto: false, cierraA: null, proximaApertura: null };
 
   if (!comercio.activo) {
     return { ...base, estado: 'inactivo' };
   }
 
-  if (comercio.vacaciones) {
-    const desde = Date.parse(comercio.vacaciones.desde);
-    const hasta = Date.parse(comercio.vacaciones.hasta);
-    if (ahora.getTime() >= desde && ahora.getTime() <= hasta) {
-      return { ...base, estado: 'vacaciones', vuelveEl: comercio.vacaciones.hasta };
-    }
-  }
-
+  // Un comercio cerrado por vacaciones llega de la API con `horarios: []`:
+  // sin tramos no hay nada que abra, así que el cálculo de abajo da "Cerrado".
   const local = new Date(ahora.getTime() + OFFSET_ARGENTINA_MS);
   const hoy = local.getUTCDay() as Horario['dia'];
   const ayer = ((hoy + 6) % 7) as Horario['dia'];
   const minutos = local.getUTCHours() * 60 + local.getUTCMinutes();
-  const tramos = horariosVigentes(comercio.horarios, temporada);
+  const tramos = comercio.horarios;
 
   for (const t of tramos) {
     const abre = aMinutos(t.abre);
@@ -89,7 +64,6 @@ export function calcularApertura(
   }
 
   // Cerrado: buscar la próxima apertura dentro de los próximos 7 días.
-  // (No se cruza con las vacaciones futuras: si arrancan antes de esa apertura, el dato es aproximado.)
   for (let enDias = 0; enDias <= 7; enDias++) {
     const dia = ((hoy + enDias) % 7) as Horario['dia'];
     const candidatos = tramos
@@ -112,8 +86,6 @@ export function textoApertura(r: ResultadoApertura): string {
   switch (r.estado) {
     case 'abierto':
       return `Abierto · cierra ${r.cierraA}`;
-    case 'vacaciones':
-      return 'Cerrado por vacaciones';
     case 'inactivo':
       return 'No disponible';
     case 'cerrado': {
@@ -133,17 +105,12 @@ export interface ResumenDia {
 }
 
 // El horario completo de la semana para la ficha del comercio, un renglón
-// por día, de lunes a domingo. Usa la temporada actual por defecto, igual
-// que calcularApertura.
-export function resumenSemanal(
-  horarios: Horario[],
-  temporada: Temporada = temporadaDe(new Date()),
-): ResumenDia[] {
-  const vigentes = horariosVigentes(horarios, temporada);
+// por día, de lunes a domingo.
+export function resumenSemanal(horarios: Horario[]): ResumenDia[] {
   const ordenLunesADomingo: Horario['dia'][] = [1, 2, 3, 4, 5, 6, 0];
 
   return ordenLunesADomingo.map((dia) => {
-    const tramosDelDia = vigentes
+    const tramosDelDia = horarios
       .filter((h) => h.dia === dia)
       .sort((a, b) => aMinutos(a.abre) - aMinutos(b.abre));
 

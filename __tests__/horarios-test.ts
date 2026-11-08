@@ -55,28 +55,9 @@ describe('calcularApertura — horario habitual (El Tornillo, L-V 08-12 y 16:30-
   });
 });
 
-describe('calcularApertura — horario de verano (diciembre a febrero)', () => {
-  // 2026-01-14 es miércoles. En verano el turno tarde de El Tornillo empieza 17:30 (no 16:30).
-  it('a las 17:00 todavía no abrió el turno tarde de verano', () => {
-    expect(textoEn(comercio('com-118'), '2026-01-14T17:00:00-03:00')).toBe('Cerrado · abre 17:30');
-  });
-
-  it('a las 17:30 ya abrió con el horario de verano', () => {
-    expect(textoEn(comercio('com-118'), '2026-01-14T17:30:00-03:00')).toBe('Abierto · cierra 21:30');
-  });
-
-  it('si el comercio no tiene tramos cargados para verano, usa el horario habitual', () => {
-    expect(textoEn(comercio('com-201'), '2026-01-14T16:45:00-03:00')).toBe('Abierto · cierra 20:30');
-  });
-});
-
-describe('calcularApertura — vacaciones (Tienda Pequeños Pasos, 20/09 al 31/12/2026)', () => {
-  it('está cerrado por vacaciones aunque sea horario habitual de atención', () => {
-    expect(textoEn(comercio('com-412'), '2026-09-24T10:00:00-03:00')).toBe('Cerrado por vacaciones');
-  });
-
-  it('vuelve a abrir normalmente después de la fecha de regreso', () => {
-    expect(textoEn(comercio('com-412'), '2027-01-04T10:00:00-03:00')).toBe('Abierto · cierra 12:30');
+describe('calcularApertura — cerrado por vacaciones (Tienda Pequeños Pasos: la API manda horarios vacíos)', () => {
+  it('sin ningún tramo cargado figura cerrado, aunque sea día y hora de atención', () => {
+    expect(textoEn(comercio('com-412'), '2026-09-24T10:00:00-03:00')).toBe('Cerrado');
   });
 });
 
@@ -94,7 +75,7 @@ describe('calcularApertura — comercio inactivo (El Aula)', () => {
 
 describe('calcularApertura — tramo que cruza la medianoche', () => {
   // Turno ficticio de bar: viernes 22:00 a sábado 02:00.
-  const horarioBar: Horario = { dia: 5, abre: '22:00', cierra: '02:00', temporada: 'habitual' };
+  const horarioBar: Horario = { dia: 5, abre: '22:00', cierra: '02:00' };
   const bar: Comercio = { ...comercio('com-118'), horarios: [horarioBar] };
 
   it('está abierto el viernes a la noche', () => {

@@ -9,6 +9,5 @@ export const rubrosMock: Rubro[] = [
   { id: 'rub-servicios', nombre: 'Servicios', icono: 'construct-outline', color: '#5D6D7E', orden: 6 },
   { id: 'rub-tecnologia', nombre: 'Tecnología', icono: 'laptop-outline', color: '#1F4E9E', orden: 7 },
   { id: 'rub-libreria', nombre: 'Librería', icono: 'book-outline', color: '#B7950B', orden: 8 },
-  { id: 'rub-almacen', nombre: 'Almacén', icono: 'basket-outline', color: '#A93226', orden: 9 },
-  { id: 'rub-otros', nombre: 'Otros', icono: 'ellipsis-horizontal-outline', color: '#7F8C8D', orden: 10 },
+  { id: 'rub-otros', nombre: 'Otros', icono: 'ellipsis-horizontal-outline', color: '#7F8C8D', orden: 9 },
 ];
