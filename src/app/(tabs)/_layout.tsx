@@ -2,15 +2,20 @@ import Ionicons from '@react-native-vector-icons/ionicons';
 import { Tabs } from 'expo-router';
 
 import { useTheme } from '@/hooks/use-theme';
+import { useSesion } from '@/sesion/SesionProvider';
 
 // Los 4 tabs de abajo, tal como los pide el PRD: Buscar, Promos, Mapa, Yo.
 // headerShown: false porque cada pantalla dibuja su propio encabezado
 // (buscador, título, etc.), no el header nativo de la navegación.
 export default function TabsLayout() {
   const theme = useTheme();
+  const { ingresoPedido } = useSesion();
 
   return (
     <Tabs
+      // Normalmente se abre en Buscar. Si el usuario eligió "Ingresar con email y
+      // contraseña" en la pantalla de bloqueo, se abre directo en Yo (el formulario).
+      initialRouteName={ingresoPedido ? 'yo' : 'index'}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.text,

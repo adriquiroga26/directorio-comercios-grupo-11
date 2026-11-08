@@ -30,6 +30,10 @@ interface ValorSesion {
   registrarse: (nombre: string, email: string, contrasena: string) => Promise<void>;
   desbloquear: () => void;
   cerrarSesion: () => Promise<void>;
+  // true si el usuario eligió "Ingresar con email y contraseña" en la pantalla de
+  // bloqueo: las pestañas usan esto para abrir directo en "Yo", donde está el formulario.
+  ingresoPedido: boolean;
+  pedirIngreso: () => Promise<void>;
 }
 
 // Context: forma de que cualquier pantalla lea la sesión sin pasarla de padre a
@@ -46,6 +50,7 @@ export function useSesion(): ValorSesion {
 export function SesionProvider({ children }: { children: ReactNode }) {
   const [estado, setEstado] = useState<Estado>('cargando');
   const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [ingresoPedido, setIngresoPedido] = useState(false);
 
   // Al abrir la app: leer la sesión guardada y, si hay, retomarla. Así la sesión
   // sobrevive al cierre de la app (lo pide la consigna) y funciona sin conexión.
@@ -129,9 +134,25 @@ export function SesionProvider({ children }: { children: ReactNode }) {
     await borrarSesion();
   }, []);
 
+  // Alternativa a la huella: se cierra la sesión guardada y se anota que el usuario
+  // quiere ingresar, para que la app abra directo en el formulario.
+  const pedirIngreso = useCallback(async () => {
+    setIngresoPedido(true);
+    await cerrarSesion();
+  }, [cerrarSesion]);
+
   return (
     <SesionContext.Provider
-      value={{ estado, usuario, ingresar, registrarse, desbloquear, cerrarSesion }}>
+      value={{
+        estado,
+        usuario,
+        ingresar,
+        registrarse,
+        desbloquear,
+        cerrarSesion,
+        ingresoPedido,
+        pedirIngreso,
+      }}>
       {children}
     </SesionContext.Provider>
   );

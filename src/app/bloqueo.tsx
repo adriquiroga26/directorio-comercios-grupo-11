@@ -16,7 +16,7 @@ import { useSesion } from '@/sesion/SesionProvider';
 // es ingresar de nuevo con email y contraseña.
 export default function BloqueoScreen() {
   const theme = useTheme();
-  const { usuario, desbloquear, cerrarSesion } = useSesion();
+  const { usuario, desbloquear, pedirIngreso } = useSesion();
 
   const [mensaje, setMensaje] = useState<string | null>(null);
   // null = todavía no se sabe si el teléfono tiene biometría.
@@ -83,10 +83,10 @@ export default function BloqueoScreen() {
           </Pressable>
         )}
 
-        {/* Alternativa: cierra la sesión guardada y lleva al ingreso con email y
-            contraseña (pestaña "Yo"). */}
+        {/* Alternativa: cierra la sesión guardada y abre la app directo en la
+            pestaña "Yo", con el formulario de ingreso. */}
         <Pressable
-          onPress={cerrarSesion}
+          onPress={pedirIngreso}
           accessibilityRole="button"
           hitSlop={8}
           style={[styles.botonSecundario, { backgroundColor: theme.backgroundElement }]}>
