@@ -30,6 +30,9 @@ interface ValorSesion {
   registrarse: (nombre: string, email: string, contrasena: string) => Promise<void>;
   desbloquear: () => void;
   cerrarSesion: () => Promise<void>;
+  // Reemplaza los datos del usuario (por ejemplo, con la lista de favoritos nueva)
+  // y los guarda, para que sobrevivan al cierre de la app.
+  actualizarUsuario: (usuario: Usuario) => void;
   // true si el usuario eligió "Ingresar con email y contraseña" en la pantalla de
   // bloqueo: las pestañas usan esto para abrir directo en "Yo", donde está el formulario.
   ingresoPedido: boolean;
@@ -134,6 +137,12 @@ export function SesionProvider({ children }: { children: ReactNode }) {
     await borrarSesion();
   }, []);
 
+  const actualizarUsuario = useCallback((actualizado: Usuario) => {
+    setUsuario(actualizado);
+    // Si el almacén falla (por ejemplo, en la web) el cambio queda sólo en memoria.
+    guardarUsuario(actualizado).catch(() => {});
+  }, []);
+
   // Alternativa a la huella: se cierra la sesión guardada y se anota que el usuario
   // quiere ingresar, para que la app abra directo en el formulario.
   const pedirIngreso = useCallback(async () => {
@@ -150,6 +159,7 @@ export function SesionProvider({ children }: { children: ReactNode }) {
         registrarse,
         desbloquear,
         cerrarSesion,
+        actualizarUsuario,
         ingresoPedido,
         pedirIngreso,
       }}>

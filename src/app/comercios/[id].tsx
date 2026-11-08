@@ -2,7 +2,16 @@ import Ionicons from '@react-native-vector-icons/ionicons';
 import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { type ComponentProps, useCallback, useEffect, useState } from 'react';
-import { FlatList, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  Alert,
+  FlatList,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
@@ -12,12 +21,16 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
+  agregarFavorito,
   ErrorApi,
   listarResenasDeComercio,
   listarRubros,
   obtenerComercio,
+  quitarFavorito,
   type ResenaConAutor,
 } from '@/servicios';
+import { useSesion } from '@/sesion/SesionProvider';
+import { useRequiereCuenta } from '@/sesion/useRequiereCuenta';
 import type { Comercio, MedioDePago, Rubro } from '@/tipos';
 import { calcularApertura, resumenSemanal, textoApertura } from '@/utilidades/horarios';
 
@@ -47,6 +60,8 @@ export default function FichaComercioScreen() {
   // habría que hacer Number(id) antes de usarlo.
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
+  const { usuario, actualizarUsuario } = useSesion();
+  const requerirCuenta = useRequiereCuenta();
 
   const [estado, setEstado] = useState<Estado>('cargando');
   const [mensajeError, setMensajeError] = useState('');
@@ -54,6 +69,7 @@ export default function FichaComercioScreen() {
   const [rubro, setRubro] = useState<Rubro | null>(null);
   const [resenas, setResenas] = useState<ResenaConAutor[]>([]);
   const [videoConError, setVideoConError] = useState(false);
+  const [guardandoFavorito, setGuardandoFavorito] = useState(false);
 
   const cargar = useCallback(() => {
     let cancelado = false;
@@ -95,6 +111,43 @@ export default function FichaComercioScreen() {
     return () => suscripcion.remove();
   }, [player]);
 
+  // Se calculan en cada render a partir de la sesión: no son estado.
+  const esFavorito = comercio !== null && (usuario?.favoritos.includes(comercio.id) ?? false);
+  // Las cuentas de comercio no tienen favoritos (la API respondería SIN_PERMISO):
+  // a ellas no se les muestra la estrella.
+  const puedeTenerFavoritos = comercio !== null && usuario?.rol !== 'comercio';
+
+  function alternarFavorito() {
+    if (comercio === null) return;
+    const comercioId = comercio.id;
+
+    // Sin sesión, requerirCuenta muestra el cartel "Necesitás una cuenta".
+    requerirCuenta(() => {
+      if (usuario === null || guardandoFavorito) return;
+      setGuardandoFavorito(true);
+
+      // Agregar: la API devuelve el usuario actualizado. Quitar: responde 204
+      // (sin cuerpo), así que la lista se arma a mano sacando ese id.
+      const operacion = esFavorito
+        ? quitarFavorito(comercioId).then(() =>
+            actualizarUsuario({
+              ...usuario,
+              favoritos: usuario.favoritos.filter((favorito) => favorito !== comercioId),
+            }),
+          )
+        : agregarFavorito(comercioId).then(actualizarUsuario);
+
+      operacion
+        .catch((error: unknown) => {
+          Alert.alert(
+            'No se pudo guardar',
+            error instanceof ErrorApi ? error.message : 'Ocurrió un error inesperado.',
+          );
+        })
+        .finally(() => setGuardandoFavorito(false));
+    });
+  }
+
   function abrirEnMapa() {
     if (!comercio) return;
     // Usa las coordenadas fijas del comercio, no la ubicación del usuario
@@ -114,7 +167,27 @@ export default function FichaComercioScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: true, title: comercio?.nombre ?? 'Comercio' }} />
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: comercio?.nombre ?? 'Comercio',
+          // La estrella de favorito (como en el mockup del PRD). `tintColor` es el
+          // color del encabezado: así el ícono lo toma sin repetir el valor.
+          headerRight: puedeTenerFavoritos
+            ? ({ tintColor }) => (
+                <Pressable
+                  onPress={alternarFavorito}
+                  disabled={guardandoFavorito}
+                  accessibilityRole="button"
+                  accessibilityLabel={esFavorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                  accessibilityState={{ selected: esFavorito, disabled: guardandoFavorito }}
+                  hitSlop={12}>
+                  <Ionicons name={esFavorito ? 'star' : 'star-outline'} size={24} color={tintColor} />
+                </Pressable>
+              )
+            : undefined,
+        }}
+      />
 
       {estado === 'cargando' && (
         <ThemedView style={styles.centrado}>

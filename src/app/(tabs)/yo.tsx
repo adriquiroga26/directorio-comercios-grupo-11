@@ -1,16 +1,17 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FormularioCuenta } from '@/components/FormularioCuenta';
+import { ListaFavoritos } from '@/components/ListaFavoritos';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useSesion } from '@/sesion/SesionProvider';
 
 // Pestaña "Yo". Tiene tres vistas según la sesión: cargando (se está leyendo si
 // hay una guardada), sin sesión (formulario de ingreso o registro) y con sesión
-// (los datos de la cuenta y el botón para cerrarla).
+// (los datos de la cuenta, los favoritos si es vecino, y el botón para cerrarla).
 export default function YoScreen() {
   const theme = useTheme();
   const { estado, usuario, cerrarSesion } = useSesion();
@@ -30,7 +31,8 @@ export default function YoScreen() {
   return (
     <ThemedView style={styles.contenedor}>
       <SafeAreaView style={styles.contenedor} edges={['top', 'left', 'right']}>
-        <View style={styles.contenido}>
+        {/* ScrollView porque la lista de favoritos puede crecer más que la pantalla. */}
+        <ScrollView contentContainerStyle={styles.contenido}>
           <ThemedText type="subtitle">Hola, {usuario.nombre}</ThemedText>
 
           <View style={[styles.tarjeta, { backgroundColor: theme.backgroundElement }]}>
@@ -44,13 +46,16 @@ export default function YoScreen() {
             <ThemedText>{usuario.rol === 'comercio' ? 'Comercio' : 'Vecino'}</ThemedText>
           </View>
 
+          {/* Las cuentas de comercio no tienen favoritos. */}
+          {usuario.rol === 'vecino' && <ListaFavoritos ids={usuario.favoritos} />}
+
           <Pressable
             onPress={cerrarSesion}
             accessibilityRole="button"
             style={[styles.boton, { backgroundColor: theme.backgroundElement }]}>
             <ThemedText type="smallBold">Cerrar sesión</ThemedText>
           </Pressable>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -68,6 +73,7 @@ const styles = StyleSheet.create({
   contenido: {
     gap: Spacing.three,
     padding: Spacing.four,
+    paddingBottom: BottomTabInset + Spacing.four,
   },
   tarjeta: {
     gap: Spacing.one,

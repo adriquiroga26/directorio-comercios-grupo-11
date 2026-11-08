@@ -106,6 +106,12 @@ export async function pedir<T>(
     clearTimeout(temporizador);
   }
 
+  // Un 204 ("sin contenido") es lo que responde la API al borrar algo: llega sin
+  // cuerpo, así que no hay JSON que leer. Se devuelve `datos: null`.
+  if (respuesta.status === 204) {
+    return { datos: null as unknown as T, meta: null };
+  }
+
   let cuerpoRespuesta: unknown;
   try {
     cuerpoRespuesta = await respuesta.json();
