@@ -3,26 +3,49 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
-import { SesionProvider } from '@/sesion/SesionProvider';
+import { SesionProvider, useSesion } from '@/sesion/SesionProvider';
 
-// Layout raíz: define el tema, la sesión y esconde el splash nativo apenas la app
-// terminó de montar. La navegación real (los 4 tabs del PRD) vive en
-// src/app/(tabs)/_layout.tsx.
+// Layout raíz: define el tema, la sesión y qué pantallas existen en cada momento.
+// El splash nativo se queda a la vista hasta que se sabe si hay una sesión guardada.
 SplashScreen.preventAutoHideAsync();
+
+// Va adentro del SesionProvider porque necesita leer la sesión con useSesion().
+function Navegacion() {
+  const { estado } = useSesion();
+
+  useEffect(() => {
+    if (estado !== 'cargando') SplashScreen.hideAsync();
+  }, [estado]);
+
+  // Mientras se lee el almacén no se muestra nada: se ve el splash.
+  if (estado === 'cargando') return null;
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      {/* Stack.Protected: si el guard es falso, esas rutas NO existen. Con la sesión
+          bloqueada sólo existe la pantalla de bloqueo, así que no se puede entrar a
+          la app ni escribiendo la dirección de otra pantalla. */}
+      <Stack.Protected guard={estado === 'bloqueada'}>
+        <Stack.Screen name="bloqueo" />
+      </Stack.Protected>
+
+      <Stack.Protected guard={estado !== 'bloqueada'}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="comercios/[id]" />
+      </Stack.Protected>
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-
-  useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       {/* SesionProvider envuelve toda la app: así cualquier pantalla puede leer
           la sesión con useSesion(). */}
       <SesionProvider>
-        <Stack screenOptions={{ headerShown: false }} />
+        <Navegacion />
       </SesionProvider>
     </ThemeProvider>
   );

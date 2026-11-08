@@ -35,7 +35,13 @@
       ],
       "@react-native-vector-icons/ionicons",
       "expo-video",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Permitir que $(PRODUCT_NAME) use Face ID para desbloquear tu sesión."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

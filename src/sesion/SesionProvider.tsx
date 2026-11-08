@@ -1,4 +1,11 @@
-import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 
 import {
   crearCuenta,
@@ -12,13 +19,16 @@ import type { Sesion, Usuario } from '@/tipos';
 import { borrarSesion, guardarSesion, guardarUsuario, leerSesion } from './almacen';
 
 // 'cargando': todavía se está leyendo si hay una sesión guardada.
-type Estado = 'cargando' | 'sin-sesion' | 'con-sesion';
+// 'bloqueada': hay una sesión guardada, pero falta desbloquearla con la huella
+// o el rostro (o volver a ingresar). Pasa sólo al abrir la app.
+type Estado = 'cargando' | 'sin-sesion' | 'bloqueada' | 'con-sesion';
 
 interface ValorSesion {
   estado: Estado;
   usuario: Usuario | null;
   ingresar: (email: string, contrasena: string) => Promise<void>;
   registrarse: (nombre: string, email: string, contrasena: string) => Promise<void>;
+  desbloquear: () => void;
   cerrarSesion: () => Promise<void>;
 }
 
@@ -58,9 +68,11 @@ export function SesionProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Hay sesión guardada: la app queda bloqueada hasta que el usuario se
+      // identifique con la huella o el rostro (pantalla src/app/bloqueo.tsx).
       setToken(guardada.token);
       setUsuario(guardada.usuario);
-      setEstado('con-sesion');
+      setEstado('bloqueada');
 
       // En segundo plano: comprobar que el token sigue valiendo y traer los datos
       // al día. Si venció, el cliente llama a alVencerLaSesion. Si no hay red, no
@@ -102,15 +114,24 @@ export function SesionProvider({ children }: { children: ReactNode }) {
     await abrirSesion(sesion);
   }
 
-  async function cerrarSesion() {
+  // El usuario pasó la huella o el rostro: se abre la app con su sesión.
+  // useCallback hace que la función sea siempre la misma entre renders; la
+  // pantalla de bloqueo la usa dentro de un useEffect y, si cambiara, el efecto
+  // volvería a correr y pediría la huella otra vez.
+  const desbloquear = useCallback(() => {
+    setEstado('con-sesion');
+  }, []);
+
+  const cerrarSesion = useCallback(async () => {
     setToken(null);
     setUsuario(null);
     setEstado('sin-sesion');
     await borrarSesion();
-  }
+  }, []);
 
   return (
-    <SesionContext.Provider value={{ estado, usuario, ingresar, registrarse, cerrarSesion }}>
+    <SesionContext.Provider
+      value={{ estado, usuario, ingresar, registrarse, desbloquear, cerrarSesion }}>
       {children}
     </SesionContext.Provider>
   );
