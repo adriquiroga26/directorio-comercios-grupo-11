@@ -1,29 +1,22 @@
-import { resenasMock, usuariosMock } from '@/mocks';
 import type { Resena } from '@/tipos';
-import { nombrePublico } from '@/utilidades/usuarios';
 
-import { respuestaMock } from './cliente';
+import { pedir } from './cliente';
 
-// Sólo lectura por ahora: crear, editar/borrar la propia, reportar, y que
-// el comercio responda necesitan una cuenta (el PRD: "la cuenta hace falta
-// para dejar reseñas"), y el login con token + biometría es Unidad 6,
-// todavía no vista. Se deja pendiente hasta esa unidad.
+// Sólo lectura por ahora: crear, editar o borrar una reseña, reportarla y que el
+// comercio responda necesitan una cuenta (el PRD: "la cuenta hace falta para
+// dejar reseñas"). Eso llega con el registro y el ingreso.
 
 export interface ResenaConAutor extends Resena {
-  nombreAutor: string; // "Marta G.", como en el mockup del PRD
+  nombreAutor: string;
 }
 
+// La API devuelve las reseñas de la más nueva a la más vieja, pero sólo trae el
+// `usuarioId` del autor: no hay ningún endpoint para pedir el nombre de otra
+// persona. Por eso todas salen como "Vecino/a" (hueco entre el PRD, que muestra
+// "Marta G.", y la API). Con una cuenta iniciada, las propias llevarán el nombre.
 export async function listarResenasDeComercio(comercioId: string): Promise<ResenaConAutor[]> {
-  const { datos } = await respuestaMock(() => {
-    const propias = resenasMock
-      .filter((r) => r.comercioId === comercioId)
-      .sort((a, b) => Date.parse(b.creadaEn) - Date.parse(a.creadaEn)); // más nueva primero
-
-    return propias.map((r) => {
-      const autor = usuariosMock.find((u) => u.id === r.usuarioId);
-      return { ...r, nombreAutor: autor ? nombrePublico(autor.nombre) : 'Vecino/a' };
-    });
-  }, []);
-
-  return datos;
+  const { datos } = await pedir<Resena[]>(
+    `/comercios/${encodeURIComponent(comercioId)}/resenas?porPagina=100`,
+  );
+  return datos.map((resena) => ({ ...resena, nombreAutor: 'Vecino/a' }));
 }

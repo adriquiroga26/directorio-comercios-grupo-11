@@ -1,7 +1,8 @@
-import type { CuerpoError, Meta } from '@/tipos';
+import type { CuerpoError, RespuestaError, RespuestaExito } from '@/tipos';
 
-// Error que lanzan todos los servicios. Cuando llegue la API real, se arma
-// a partir de { "error": { "codigo", "mensaje" } } sin cambiar a quien lo captura.
+// Error que lanzan todos los servicios. Se arma a partir de la respuesta de error
+// de la API ({ "error": { "codigo", "mensaje" } }) o de una falla de conexión.
+// El `mensaje` está pensado para mostrarlo tal cual en pantalla.
 export class ErrorApi extends Error {
   codigo: string;
 
@@ -12,37 +13,87 @@ export class ErrorApi extends Error {
   }
 }
 
-// Sólo para desarrollo con mocks: permite ver en pantalla los estados
-// "lista vacía" y "error de red". Se elimina cuando llegue la API.
-export type ModoMock = 'normal' | 'vacio' | 'error';
+// Dirección de la API. Expo reemplaza process.env.EXPO_PUBLIC_* por su valor al
+// armar la app (sólo las variables con ese prefijo llegan al código). Se define
+// en .env.local; si falta, se usa localhost (sirve para la web, no para el celular).
+const URL_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
-let modoMock: ModoMock = 'normal';
+// fetch no tiene tiempo máximo propio: sin esto, una dirección que no responde
+// dejaría la pantalla cargando para siempre.
+const TIEMPO_MAXIMO_MS = 10_000;
 
-export function setModoMock(modo: ModoMock) {
-  modoMock = modo;
+// Sólo para desarrollo: la API acepta la cabecera X-Simular para probar un error
+// del servidor o una respuesta lenta sin apagar el wifi.
+export type Simulacion = 'normal' | 'error' | 'demora';
+
+let simulacion: Simulacion = 'normal';
+
+export function setSimulacion(valor: Simulacion) {
+  simulacion = valor;
 }
 
-export function getModoMock(): ModoMock {
-  return modoMock;
+function cabeceras(): Record<string, string> {
+  const resultado: Record<string, string> = { Accept: 'application/json' };
+  if (__DEV__ && simulacion === 'error') resultado['X-Simular'] = 'error-500';
+  if (__DEV__ && simulacion === 'demora') resultado['X-Simular'] = 'demora-3000';
+  return resultado;
 }
 
-const LATENCIA_MS = 400;
+// La API siempre responde con { datos, meta } o con { error: { codigo, mensaje } }.
+// Esta función comprueba la forma antes de confiar en ella.
+function esRespuestaError(cuerpo: unknown): cuerpo is RespuestaError {
+  if (typeof cuerpo !== 'object' || cuerpo === null || !('error' in cuerpo)) return false;
+  const { error } = cuerpo;
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'codigo' in error &&
+    typeof error.codigo === 'string' &&
+    'mensaje' in error &&
+    typeof error.mensaje === 'string'
+  );
+}
 
-// Simula la red: espera un poco y respeta el modo mock.
-// `datos` se calcula recién después de la espera, igual que un fetch.
-export async function respuestaMock<T>(
-  obtenerDatos: () => T,
-  vacio: T,
-): Promise<{ datos: T; meta?: Meta }> {
-  await new Promise((resolver) => setTimeout(resolver, LATENCIA_MS));
+// GET a la API. Devuelve el sobre { datos, meta } o lanza ErrorApi.
+// Los servicios (comercios.ts, promociones.ts, ...) usan esto y nada más.
+export async function pedir<T>(ruta: string): Promise<RespuestaExito<T>> {
+  const controlador = new AbortController();
+  const temporizador = setTimeout(() => controlador.abort(), TIEMPO_MAXIMO_MS);
 
-  if (modoMock === 'error') {
+  let respuesta: Response;
+  try {
+    respuesta = await fetch(`${URL_BASE}${ruta}`, {
+      headers: cabeceras(),
+      signal: controlador.signal,
+    });
+  } catch {
+    // Sin red, dirección incorrecta o tiempo agotado: todo es "no pudimos conectarnos".
     throw new ErrorApi({
       codigo: 'SIN_CONEXION',
       mensaje: 'No pudimos conectarnos. Revisá tu conexión e intentá de nuevo.',
     });
+  } finally {
+    clearTimeout(temporizador);
   }
 
-  const datos = modoMock === 'vacio' ? vacio : obtenerDatos();
-  return { datos };
+  let cuerpo: unknown;
+  try {
+    cuerpo = await respuesta.json();
+  } catch {
+    throw new ErrorApi({
+      codigo: 'RESPUESTA_INVALIDA',
+      mensaje: 'No pudimos leer la respuesta del servidor. Probá de nuevo en un rato.',
+    });
+  }
+
+  // fetch NO lanza error ante un 404 o un 500: hay que mirar response.ok.
+  if (!respuesta.ok) {
+    if (esRespuestaError(cuerpo)) throw new ErrorApi(cuerpo.error);
+    throw new ErrorApi({
+      codigo: 'ERROR_INTERNO',
+      mensaje: 'Algo salió mal. Probá de nuevo en un rato.',
+    });
+  }
+
+  return cuerpo as RespuestaExito<T>;
 }

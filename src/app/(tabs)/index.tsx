@@ -9,7 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { ErrorApi, listarComercios, listarRubros, type ModoMock, setModoMock } from '@/servicios';
+import { ErrorApi, listarComercios, listarRubros, type Simulacion, setSimulacion } from '@/servicios';
 import type { Comercio, Rubro } from '@/tipos';
 import { calcularApertura } from '@/utilidades/horarios';
 
@@ -188,11 +188,11 @@ export default function BuscarScreen() {
           <ThemedText type="small" themeColor="textSecondary">
             Sólo desarrollo:
           </ThemedText>
-          {(['normal', 'vacio', 'error'] as ModoMock[]).map((modo) => (
+          {(['normal', 'error', 'demora'] as Simulacion[]).map((modo) => (
             <Pressable
               key={modo}
               onPress={() => {
-                setModoMock(modo);
+                setSimulacion(modo);
                 cargar();
               }}
               hitSlop={8}

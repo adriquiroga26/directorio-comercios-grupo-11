@@ -4,9 +4,10 @@ export interface Meta {
   porPagina: number;
 }
 
+// La API manda `meta` con la paginación en las listas y `meta: null` en un solo recurso.
 export interface RespuestaExito<T> {
   datos: T;
-  meta?: Meta;
+  meta: Meta | null;
 }
 
 export interface CuerpoError {
