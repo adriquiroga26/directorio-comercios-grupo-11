@@ -34,7 +34,8 @@
         }
       ],
       "@react-native-vector-icons/ionicons",
-      "expo-video"
+      "expo-video",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -32,8 +32,27 @@ export function setSimulacion(valor: Simulacion) {
   simulacion = valor;
 }
 
-function cabeceras(): Record<string, string> {
+// Token de la sesión. Lo guarda acá la sesión (src/sesion) apenas el usuario
+// ingresa, y desde ese momento viaja solo en cada pedido.
+let token: string | null = null;
+
+export function setToken(valor: string | null) {
+  token = valor;
+}
+
+// Función que se llama cuando la API dice que la sesión ya no sirve (token vencido
+// o inválido). La registra la sesión para cerrarla y volver al ingreso.
+let alVencerLaSesion: (() => void) | null = null;
+
+export function setAlVencerLaSesion(funcion: (() => void) | null) {
+  alVencerLaSesion = funcion;
+}
+
+function cabeceras(conCuerpo: boolean): Record<string, string> {
   const resultado: Record<string, string> = { Accept: 'application/json' };
+  if (conCuerpo) resultado['Content-Type'] = 'application/json';
+  // La sesión viaja en la cabecera Authorization: Bearer <token> (lo pide el PRD).
+  if (token) resultado.Authorization = `Bearer ${token}`;
   if (__DEV__ && simulacion === 'error') resultado['X-Simular'] = 'error-500';
   if (__DEV__ && simulacion === 'demora') resultado['X-Simular'] = 'demora-3000';
   return resultado;
@@ -54,16 +73,27 @@ function esRespuestaError(cuerpo: unknown): cuerpo is RespuestaError {
   );
 }
 
-// GET a la API. Devuelve el sobre { datos, meta } o lanza ErrorApi.
-// Los servicios (comercios.ts, promociones.ts, ...) usan esto y nada más.
-export async function pedir<T>(ruta: string): Promise<RespuestaExito<T>> {
+interface Opciones {
+  metodo?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+  cuerpo?: unknown; // se manda como JSON
+}
+
+// Pedido a la API. Devuelve el sobre { datos, meta } o lanza ErrorApi.
+// Los servicios (comercios.ts, cuenta.ts, ...) usan esto y nada más.
+export async function pedir<T>(
+  ruta: string,
+  { metodo = 'GET', cuerpo }: Opciones = {},
+): Promise<RespuestaExito<T>> {
+  const conCuerpo = cuerpo !== undefined;
   const controlador = new AbortController();
   const temporizador = setTimeout(() => controlador.abort(), TIEMPO_MAXIMO_MS);
 
   let respuesta: Response;
   try {
     respuesta = await fetch(`${URL_BASE}${ruta}`, {
-      headers: cabeceras(),
+      method: metodo,
+      headers: cabeceras(conCuerpo),
+      body: conCuerpo ? JSON.stringify(cuerpo) : undefined,
       signal: controlador.signal,
     });
   } catch {
@@ -76,9 +106,9 @@ export async function pedir<T>(ruta: string): Promise<RespuestaExito<T>> {
     clearTimeout(temporizador);
   }
 
-  let cuerpo: unknown;
+  let cuerpoRespuesta: unknown;
   try {
-    cuerpo = await respuesta.json();
+    cuerpoRespuesta = await respuesta.json();
   } catch {
     throw new ErrorApi({
       codigo: 'RESPUESTA_INVALIDA',
@@ -88,12 +118,16 @@ export async function pedir<T>(ruta: string): Promise<RespuestaExito<T>> {
 
   // fetch NO lanza error ante un 404 o un 500: hay que mirar response.ok.
   if (!respuesta.ok) {
-    if (esRespuestaError(cuerpo)) throw new ErrorApi(cuerpo.error);
+    if (esRespuestaError(cuerpoRespuesta)) {
+      // Con una sesión iniciada, NO_AUTENTICADO significa que el token ya no vale.
+      if (cuerpoRespuesta.error.codigo === 'NO_AUTENTICADO' && token) alVencerLaSesion?.();
+      throw new ErrorApi(cuerpoRespuesta.error);
+    }
     throw new ErrorApi({
       codigo: 'ERROR_INTERNO',
       mensaje: 'Algo salió mal. Probá de nuevo en un rato.',
     });
   }
 
-  return cuerpo as RespuestaExito<T>;
+  return cuerpoRespuesta as RespuestaExito<T>;
 }
