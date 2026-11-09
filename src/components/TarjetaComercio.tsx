@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { fuenteDeFoto } from '@/almacen/fotos';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -40,7 +41,7 @@ export function TarjetaComercio({ comercio, rubro, distanciaM = null }: Props) {
   return (
     <ThemedView type="backgroundElement" style={styles.tarjeta}>
       {primeraImagen ? (
-        <Image source={{ uri: primeraImagen }} style={styles.imagen} contentFit="cover" />
+        <Image source={fuenteDeFoto(primeraImagen)} style={styles.imagen} contentFit="cover" />
       ) : (
         <View style={[styles.imagen, styles.imagenVacia, { backgroundColor: theme.backgroundSelected }]}>
           <Ionicons name="image-outline" size={28} color={theme.textSecondary} />

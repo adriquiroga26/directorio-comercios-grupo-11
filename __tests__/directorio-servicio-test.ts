@@ -1,4 +1,5 @@
 import { guardarDirectorio, leerComercioGuardado, leerDirectorio } from '@/almacen/directorio';
+import { sincronizarFotos } from '@/almacen/fotos';
 import { ErrorApi, pedir } from '@/servicios/cliente';
 import { obtenerComercio } from '@/servicios/comercios';
 import { cargarDirectorio } from '@/servicios/directorio';
@@ -12,6 +13,9 @@ jest.mock('@/almacen/directorio', () => ({
   leerComercioGuardado: jest.fn(),
 }));
 
+// Las fotos usan expo-file-system (nativo): también se reemplazan.
+jest.mock('@/almacen/fotos', () => ({ sincronizarFotos: jest.fn() }));
+
 // Se reemplaza sólo `pedir` (el que hace los pedidos a la API); ErrorApi queda el verdadero.
 jest.mock('@/servicios/cliente', () => ({
   ...jest.requireActual('@/servicios/cliente'),
@@ -22,6 +26,7 @@ const mockGuardar = jest.mocked(guardarDirectorio);
 const mockLeer = jest.mocked(leerDirectorio);
 const mockLeerComercio = jest.mocked(leerComercioGuardado);
 const mockPedir = jest.mocked(pedir);
+const mockFotos = jest.mocked(sincronizarFotos);
 
 const comercioNuevo = { id: 'com-1', nombre: 'Nuevo' } as Comercio;
 const comercioViejo = { id: 'com-1', nombre: 'Viejo' } as Comercio;
@@ -41,6 +46,8 @@ function apiResponde() {
 
 beforeEach(() => {
   jest.resetAllMocks();
+  // sincronizarFotos es `async`: siempre devuelve una promesa (que acá sale bien por defecto).
+  mockFotos.mockResolvedValue(undefined);
 });
 
 describe('cargarDirectorio', () => {
@@ -57,6 +64,26 @@ describe('cargarDirectorio', () => {
       actualizadoEn: '2026-11-09T15:00:00.000Z',
     });
     expect(mockGuardar).toHaveBeenCalledWith([comercioNuevo], [rubro]);
+  });
+
+  it('con la API andando: baja las fotos en segundo plano, y si fallan no afecta', async () => {
+    apiResponde();
+    mockGuardar.mockResolvedValue('2026-11-09T15:00:00.000Z');
+    mockFotos.mockRejectedValue(new Error('sin espacio'));
+
+    const directorio = await cargarDirectorio();
+
+    expect(directorio.desdeGuardado).toBe(false);
+    expect(mockFotos).toHaveBeenCalledWith([comercioNuevo]);
+  });
+
+  it('sin conexión: no intenta bajar fotos', async () => {
+    mockPedir.mockRejectedValue(sinConexion());
+    mockLeer.mockResolvedValue({ comercios: [comercioViejo], rubros: [rubro], actualizadoEn: null });
+
+    await cargarDirectorio();
+
+    expect(mockFotos).not.toHaveBeenCalled();
   });
 
   it('con la API andando pero sin poder guardar: igual devuelve lo nuevo', async () => {

@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
+import { fuenteDeFoto } from '@/almacen/fotos';
 import { AvisoDeConexion } from '@/components/AvisoDeConexion';
 import { TarjetaResena } from '@/components/TarjetaResena';
 import { ThemedText } from '@/components/themed-text';
@@ -325,7 +326,7 @@ export default function FichaComercioScreen() {
                 {comercio.videoUrl && !videoConError ? (
                   <VideoView player={player} style={styles.media} nativeControls />
                 ) : comercio.imagenes[0] ? (
-                  <Image source={{ uri: comercio.imagenes[0] }} style={styles.media} contentFit="cover" />
+                  <Image source={fuenteDeFoto(comercio.imagenes[0])} style={styles.media} contentFit="cover" />
                 ) : (
                   <View style={[styles.media, styles.mediaVacia, { backgroundColor: theme.backgroundElement }]}>
                     <Ionicons name="image-outline" size={36} color={theme.textSecondary} />
@@ -343,7 +344,7 @@ export default function FichaComercioScreen() {
                     {fotosDeLaTira.map((url) => (
                       <Image
                         key={url}
-                        source={{ uri: url }}
+                        source={fuenteDeFoto(url)}
                         style={[styles.fotoTira, { backgroundColor: theme.backgroundElement }]}
                         contentFit="cover"
                         accessibilityLabel={`Foto de ${comercio.nombre}`}

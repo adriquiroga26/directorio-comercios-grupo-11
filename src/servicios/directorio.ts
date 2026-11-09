@@ -1,4 +1,5 @@
 import { guardarDirectorio, leerDirectorio } from '@/almacen/directorio';
+import { sincronizarFotos } from '@/almacen/fotos';
 import type { Comercio, Rubro } from '@/tipos';
 
 import { listarComercios, listarRubros } from './comercios';
@@ -25,6 +26,9 @@ export async function cargarDirectorio(): Promise<Directorio> {
     const actualizadoEn = await guardarDirectorio(comercios, rubros).catch(() =>
       new Date().toISOString(),
     );
+    // Las fotos se bajan en segundo plano, SIN esperarlas: la pantalla no se demora por ellas, y
+    // si alguna falla, se sigue viendo la de la red.
+    void sincronizarFotos(comercios).catch(() => {});
     return { comercios, rubros, desdeGuardado: false, actualizadoEn };
   } catch (error) {
     const guardado = await leerDirectorio().catch(() => null);
