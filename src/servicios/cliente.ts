@@ -16,7 +16,7 @@ export class ErrorApi extends Error {
 // Dirección de la API. Expo reemplaza process.env.EXPO_PUBLIC_* por su valor al
 // armar la app (sólo las variables con ese prefijo llegan al código). Se define
 // en .env.local; si falta, se usa localhost (sirve para la web, no para el celular).
-const URL_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+export const URL_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 // fetch no tiene tiempo máximo propio: sin esto, una dirección que no responde
 // dejaría la pantalla cargando para siempre.
@@ -73,6 +73,28 @@ function esRespuestaError(cuerpo: unknown): cuerpo is RespuestaError {
   );
 }
 
+// Las cabeceras de la sesión, para los pedidos que no pasan por `pedir` (como subir un
+// archivo, que no se manda como JSON).
+export function cabecerasDeSesion(): Record<string, string> {
+  const resultado: Record<string, string> = { Accept: 'application/json' };
+  if (token) resultado.Authorization = `Bearer ${token}`;
+  return resultado;
+}
+
+// Convierte el cuerpo de una respuesta fallida en el ErrorApi que corresponde. Si la API dice
+// que la sesión ya no vale, además la cierra. Lo usan `pedir` y la subida de archivos.
+export function errorDeRespuesta(cuerpoRespuesta: unknown): ErrorApi {
+  if (esRespuestaError(cuerpoRespuesta)) {
+    // Con una sesión iniciada, NO_AUTENTICADO significa que el token ya no vale.
+    if (cuerpoRespuesta.error.codigo === 'NO_AUTENTICADO' && token) alVencerLaSesion?.();
+    return new ErrorApi(cuerpoRespuesta.error);
+  }
+  return new ErrorApi({
+    codigo: 'ERROR_INTERNO',
+    mensaje: 'Algo salió mal. Probá de nuevo en un rato.',
+  });
+}
+
 interface Opciones {
   metodo?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   cuerpo?: unknown; // se manda como JSON
@@ -124,15 +146,7 @@ export async function pedir<T>(
 
   // fetch NO lanza error ante un 404 o un 500: hay que mirar response.ok.
   if (!respuesta.ok) {
-    if (esRespuestaError(cuerpoRespuesta)) {
-      // Con una sesión iniciada, NO_AUTENTICADO significa que el token ya no vale.
-      if (cuerpoRespuesta.error.codigo === 'NO_AUTENTICADO' && token) alVencerLaSesion?.();
-      throw new ErrorApi(cuerpoRespuesta.error);
-    }
-    throw new ErrorApi({
-      codigo: 'ERROR_INTERNO',
-      mensaje: 'Algo salió mal. Probá de nuevo en un rato.',
-    });
+    throw errorDeRespuesta(cuerpoRespuesta);
   }
 
   return cuerpoRespuesta as RespuestaExito<T>;

@@ -1,3 +1,4 @@
+export * from './archivos';
 export * from './cliente';
 export * from './comercios';
 export * from './cuenta';

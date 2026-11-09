@@ -98,6 +98,16 @@ export function PanelComercio() {
       </Pressable>
 
       <Pressable
+        onPress={() => router.push('/mi-comercio/multimedia')}
+        accessibilityRole="button"
+        accessibilityLabel="Editar las fotos y el video de mi comercio"
+        style={[styles.fila, { backgroundColor: theme.backgroundElement }]}>
+        <Ionicons name="images-outline" size={18} color={theme.text} />
+        <ThemedText style={styles.textoFila}>Fotos y video</ThemedText>
+        <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+      </Pressable>
+
+      <Pressable
         onPress={() => router.push('/mi-comercio/horarios')}
         accessibilityRole="button"
         accessibilityLabel="Editar los horarios y las vacaciones de mi comercio"

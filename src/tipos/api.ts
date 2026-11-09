@@ -21,6 +21,14 @@ export interface RespuestaError {
   error: CuerpoError;
 }
 
+// Lo que devuelve POST /archivos: la dirección del archivo ya subido. Esa `url` es la que
+// después se manda en el recurso (por ejemplo en las fotos o el video del comercio).
+export interface ArchivoSubido {
+  url: string;
+  tipo: 'imagen' | 'audio' | 'video';
+  bytes: number;
+}
+
 // Lo que devuelven POST /auth/registro y POST /auth/ingreso.
 export interface Sesion {
   token: string;

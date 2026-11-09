@@ -23,6 +23,10 @@ export interface DatosFicha {
   whatsapp?: string | null;
   instagram?: string | null;
   mediosDePago?: MedioDePago[];
+  // Direcciones de `POST /archivos` (hasta 8 fotos): reemplaza la lista ENTERA.
+  imagenes?: string[];
+  // Dirección de `POST /archivos` de un video, o null para sacarlo.
+  videoUrl?: string | null;
   // Reemplaza la lista ENTERA de tramos.
   horarios?: Horario[];
   // Cierre por vacaciones: último día cerrado ("2026-12-31"), o null para levantarlo. Es un

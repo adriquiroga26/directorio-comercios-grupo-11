@@ -109,6 +109,12 @@ export default function FichaComercioScreen() {
     return () => suscripcion.remove();
   }, [player]);
 
+  // Dato derivado (no es estado): arriba se ve el video si hay y anda; si no, la primera foto.
+  // Las fotos que no quedaron arriba van en la tira de abajo.
+  const seVeElVideo = comercio !== null && comercio.videoUrl !== null && !videoConError;
+  const fotosDeLaTira =
+    comercio === null ? [] : seVeElVideo ? comercio.imagenes : comercio.imagenes.slice(1);
+
   // Se calculan en cada render a partir de la sesión: no son estado.
   const esFavorito = comercio !== null && (usuario?.favoritos.includes(comercio.id) ?? false);
   // Las cuentas de comercio no tienen favoritos (la API respondería SIN_PERMISO):
@@ -287,6 +293,26 @@ export default function FichaComercioScreen() {
                   <View style={[styles.media, styles.mediaVacia, { backgroundColor: theme.backgroundElement }]}>
                     <Ionicons name="image-outline" size={36} color={theme.textSecondary} />
                   </View>
+                )}
+
+                {/* El recuadro de arriba muestra una sola cosa: el video, o si no hay, la primera
+                    foto. El resto de las fotos (todas, si arriba se ve el video) van en esta
+                    tira que se desliza hacia el costado. */}
+                {fotosDeLaTira.length > 0 && (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.tiraFotos}>
+                    {fotosDeLaTira.map((url) => (
+                      <Image
+                        key={url}
+                        source={{ uri: url }}
+                        style={[styles.fotoTira, { backgroundColor: theme.backgroundElement }]}
+                        contentFit="cover"
+                        accessibilityLabel={`Foto de ${comercio.nombre}`}
+                      />
+                    ))}
+                  </ScrollView>
                 )}
 
                 <View style={styles.seccion}>
@@ -507,6 +533,15 @@ const styles = StyleSheet.create({
   mediaVacia: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  tiraFotos: {
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+  },
+  fotoTira: {
+    width: 140,
+    height: 100,
+    borderRadius: Spacing.two,
   },
   seccion: {
     gap: Spacing.one,

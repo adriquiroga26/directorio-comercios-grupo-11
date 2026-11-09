@@ -45,6 +45,7 @@ function Navegacion() {
         <Stack.Screen name="mi-comercio/validar" />
         <Stack.Screen name="mi-comercio/ficha" />
         <Stack.Screen name="mi-comercio/horarios" />
+        <Stack.Screen name="mi-comercio/multimedia" />
         <Stack.Screen name="mi-comercio/resenas" />
         <Stack.Screen name="mi-comercio/responder" options={{ presentation: 'modal' }} />
       </Stack.Protected>
