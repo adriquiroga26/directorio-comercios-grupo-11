@@ -84,7 +84,9 @@ export function ListaFavoritos({ ids }: Props) {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Ver la ficha de ${comercio.nombre}`}
-              style={[styles.fila, { backgroundColor: theme.backgroundElement }]}>
+              // Link asChild no admite que su hijo reciba un ARREGLO de estilos: hay que
+              // pasarle uno solo. StyleSheet.flatten junta el fijo y el del tema en un objeto.
+              style={StyleSheet.flatten([styles.fila, { backgroundColor: theme.backgroundElement }])}>
               <Ionicons name="star" size={16} color={theme.text} />
               <ThemedText style={styles.nombre}>{comercio.nombre}</ThemedText>
               <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
