@@ -1,4 +1,4 @@
-import { validarResena } from '@/utilidades/resenas';
+import { validarResena, validarRespuesta } from '@/utilidades/resenas';
 
 describe('validarResena', () => {
   it('acepta una reseña con estrellas y comentario', () => {
@@ -24,6 +24,24 @@ describe('validarResena', () => {
     expect(validarResena({ estrellas: 4, comentario: 'a'.repeat(1000) })).toBeNull();
     expect(validarResena({ estrellas: 4, comentario: 'a'.repeat(1001) })).toBe(
       'El comentario puede tener hasta 1000 caracteres.',
+    );
+  });
+});
+
+describe('validarRespuesta', () => {
+  it('acepta una respuesta con texto', () => {
+    expect(validarRespuesta('¡Gracias por tu visita!')).toBeNull();
+  });
+
+  it('exige texto y no cuenta los espacios', () => {
+    expect(validarRespuesta('')).toBe('Escribí tu respuesta.');
+    expect(validarRespuesta('   ')).toBe('Escribí tu respuesta.');
+  });
+
+  it('acepta 1000 caracteres y rechaza 1001', () => {
+    expect(validarRespuesta('a'.repeat(1000))).toBeNull();
+    expect(validarRespuesta('a'.repeat(1001))).toBe(
+      'La respuesta puede tener hasta 1000 caracteres.',
     );
   });
 });

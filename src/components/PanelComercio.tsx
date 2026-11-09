@@ -98,6 +98,16 @@ export function PanelComercio() {
       </Pressable>
 
       <Pressable
+        onPress={() => router.push('/mi-comercio/resenas')}
+        accessibilityRole="button"
+        accessibilityLabel="Ver y responder las reseñas de mi comercio"
+        style={[styles.fila, { backgroundColor: theme.backgroundElement }]}>
+        <Ionicons name="chatbubble-ellipses-outline" size={18} color={theme.text} />
+        <ThemedText style={styles.textoFila}>Reseñas</ThemedText>
+        <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+      </Pressable>
+
+      <Pressable
         onPress={abrirValidacion}
         accessibilityRole="button"
         accessibilityLabel="Validar el código de un cliente"

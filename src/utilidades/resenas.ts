@@ -9,6 +9,21 @@ export interface CamposResena {
   comentario: string;
 }
 
+// Largo máximo de la respuesta del comercio (el mismo tope que el comentario).
+export const LARGO_MAXIMO_RESPUESTA = 1000;
+
+// Devuelve el problema de una respuesta del comercio (texto para mostrar) o null si está bien.
+export function validarRespuesta(respuesta: string): string | null {
+  const texto = respuesta.trim();
+  if (texto.length < 1) {
+    return 'Escribí tu respuesta.';
+  }
+  if (texto.length > LARGO_MAXIMO_RESPUESTA) {
+    return `La respuesta puede tener hasta ${LARGO_MAXIMO_RESPUESTA} caracteres.`;
+  }
+  return null;
+}
+
 // Devuelve el primer problema (texto para mostrar) o null si está todo bien.
 export function validarResena(campos: CamposResena): string | null {
   if (!Number.isInteger(campos.estrellas) || campos.estrellas < 1 || campos.estrellas > 5) {

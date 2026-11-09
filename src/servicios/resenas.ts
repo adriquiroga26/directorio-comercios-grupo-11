@@ -48,6 +48,16 @@ export async function borrarResena(resenaId: string): Promise<void> {
   await pedir<null>(`/resenas/${encodeURIComponent(resenaId)}`, { metodo: 'DELETE' });
 }
 
+// Sólo la cuenta del comercio reseñado, y UNA sola vez por reseña (si ya había respondido,
+// la API contesta RESENA_YA_RESPONDIDA). Una vez publicada, la respuesta no se edita.
+export async function responderResena(resenaId: string, respuesta: string): Promise<Resena> {
+  const { datos } = await pedir<Resena>(`/resenas/${encodeURIComponent(resenaId)}/respuesta`, {
+    metodo: 'POST',
+    cuerpo: { respuesta },
+  });
+  return datos;
+}
+
 // Cualquier cuenta menos la del autor (REPORTE_PROPIO). La reseña sigue visible, con
 // `reportada: true`. Repetirlo no da error.
 export async function reportarResena(resenaId: string): Promise<Resena> {

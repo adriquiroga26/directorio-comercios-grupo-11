@@ -43,6 +43,8 @@ function Navegacion() {
         <Stack.Screen name="mi-comercio/promociones" />
         <Stack.Screen name="mi-comercio/promocion" options={{ presentation: 'modal' }} />
         <Stack.Screen name="mi-comercio/validar" />
+        <Stack.Screen name="mi-comercio/resenas" />
+        <Stack.Screen name="mi-comercio/responder" options={{ presentation: 'modal' }} />
       </Stack.Protected>
     </Stack>
   );
