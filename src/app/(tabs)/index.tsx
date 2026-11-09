@@ -5,6 +5,7 @@ import { FlatList, Pressable, StyleSheet, Switch, TextInput, View } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AvisoUbicacion } from '@/components/AvisoUbicacion';
+import { FiltroRubros } from '@/components/FiltroRubros';
 import { TarjetaComercio } from '@/components/TarjetaComercio';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -20,12 +21,6 @@ type Estado = 'cargando' | 'error' | 'listo';
 
 // Sólo desarrollo: el centro de Concepción del Uruguay, donde están los comercios de la API.
 const CENTRO_CONCEPCION = { latitud: -32.4825, longitud: -58.2372 };
-
-// Chip "Todos" + un chip por rubro. id null = sin filtro de rubro.
-interface ChipRubro {
-  id: string | null;
-  nombre: string;
-}
 
 export default function BuscarScreen() {
   const theme = useTheme();
@@ -82,7 +77,6 @@ export default function BuscarScreen() {
   // filtros: no es estado porque se puede derivar de lo que ya tenemos
   // (incluida la hora actual para "abierto ahora").
   const rubroPorId = new Map(rubros.map((rubro) => [rubro.id, rubro]));
-  const chips: ChipRubro[] = [{ id: null, nombre: 'Todos' }, ...rubros];
   const textoBusqueda = busqueda.trim().toLowerCase();
 
   const comerciosFiltrados = comercios.filter((comercio) => {
@@ -117,32 +111,10 @@ export default function BuscarScreen() {
           />
         </View>
 
-        <FlatList
-          data={chips}
-          keyExtractor={(chip) => chip.id ?? 'todos'}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filaChips}
-          renderItem={({ item }) => {
-            const seleccionado = item.id === rubroSeleccionado;
-            return (
-              <Pressable
-                onPress={() => setRubroSeleccionado(item.id)}
-                accessibilityRole="button"
-                accessibilityLabel={`Filtrar por rubro ${item.nombre}`}
-                hitSlop={8}
-                style={[
-                  styles.chip,
-                  { backgroundColor: seleccionado ? theme.text : theme.backgroundElement },
-                ]}>
-                <ThemedText
-                  type="small"
-                  style={{ color: seleccionado ? theme.background : theme.text }}>
-                  {item.nombre}
-                </ThemedText>
-              </Pressable>
-            );
-          }}
+        <FiltroRubros
+          rubros={rubros}
+          seleccionado={rubroSeleccionado}
+          onElegir={setRubroSeleccionado}
         />
 
         {/* Los dos interruptores van en la misma fila (flexWrap: si no entran, el segundo
@@ -294,16 +266,6 @@ const styles = StyleSheet.create({
   entradaTexto: {
     flex: 1,
     fontSize: 16,
-  },
-  filaChips: {
-    gap: Spacing.two,
-  },
-  chip: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderRadius: Spacing.five,
-    minHeight: 32,
-    justifyContent: 'center',
   },
   filaSwitches: {
     flexDirection: 'row',
