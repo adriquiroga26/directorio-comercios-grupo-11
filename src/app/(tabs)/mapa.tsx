@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AvisoDeConexion } from '@/components/AvisoDeConexion';
 import { AvisoUbicacion } from '@/components/AvisoUbicacion';
 import { FiltroRubros } from '@/components/FiltroRubros';
 import { TarjetaComercio } from '@/components/TarjetaComercio';
@@ -12,13 +13,10 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { ErrorApi, listarComercios, listarRubros } from '@/servicios';
-import type { Comercio, Rubro } from '@/tipos';
+import { useDirectorio } from '@/directorio/DirectorioProvider';
 import { useUbicacion } from '@/ubicacion/UbicacionProvider';
 import { distanciaEnMetros } from '@/utilidades/distancias';
 import { regionAlrededorDe, regionQueAbarca } from '@/utilidades/mapa';
-
-type Estado = 'cargando' | 'error' | 'listo';
 
 const COLOR_PERSONA = '#1E6FEB';
 
@@ -31,10 +29,8 @@ export default function MapaScreen() {
   // Referencia al mapa: permite ordenarle desde el código "andá a esta región".
   const mapaRef = useRef<MapView>(null);
 
-  const [estado, setEstado] = useState<Estado>('cargando');
-  const [mensajeError, setMensajeError] = useState('');
-  const [comercios, setComercios] = useState<Comercio[]>([]);
-  const [rubros, setRubros] = useState<Rubro[]>([]);
+  // El directorio lo carga (y guarda en el teléfono) el DirectorioProvider.
+  const { estado, comercios, rubros, mensajeError, recargar, reintentar } = useDirectorio();
 
   const [rubroSeleccionado, setRubroSeleccionado] = useState<string | null>(null);
   const [comercioElegidoId, setComercioElegidoId] = useState<string | null>(null);
@@ -44,31 +40,14 @@ export default function MapaScreen() {
   const [mapaListo, setMapaListo] = useState(false);
   const [mapaCargado, setMapaCargado] = useState(false);
 
-  // Al volver a esta pantalla se refrescan los datos. Si ya había datos, el mapa NO se
-  // desmonta ("cargando" sólo la primera vez): así no se pierde el zoom ni el comercio elegido.
-  const cargar = useCallback(() => {
-    let cancelado = false;
-    setEstado((anterior) => (anterior === 'listo' ? anterior : 'cargando'));
-
-    Promise.all([listarComercios(), listarRubros()])
-      .then(([comerciosRecibidos, rubrosRecibidos]) => {
-        if (cancelado) return;
-        setComercios(comerciosRecibidos);
-        setRubros(rubrosRecibidos);
-        setEstado('listo');
-      })
-      .catch((error: unknown) => {
-        if (cancelado) return;
-        setMensajeError(error instanceof ErrorApi ? error.message : 'Ocurrió un error inesperado.');
-        setEstado('error');
-      });
-
-    return () => {
-      cancelado = true;
-    };
-  }, []);
-
-  useFocusEffect(cargar);
+  // Al volver a esta pantalla se refrescan los datos. El mapa NO se desmonta al recargar (el
+  // estado sólo pasa por "cargando" la primera vez): así no se pierde el zoom ni el comercio
+  // elegido.
+  useFocusEffect(
+    useCallback(() => {
+      void recargar();
+    }, [recargar]),
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -110,7 +89,7 @@ export default function MapaScreen() {
             {mensajeError}
           </ThemedText>
           <Pressable
-            onPress={cargar}
+            onPress={reintentar}
             accessibilityRole="button"
             hitSlop={8}
             style={[styles.botonReintentar, { backgroundColor: theme.backgroundElement }]}>
@@ -180,6 +159,7 @@ export default function MapaScreen() {
               />
             </View>
             <AvisoUbicacion />
+            <AvisoDeConexion />
             {__DEV__ && (
               <View style={[styles.diagnostico, { backgroundColor: theme.background }]}>
                 <ThemedText type="small">

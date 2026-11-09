@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AvisoDeConexion } from '@/components/AvisoDeConexion';
 import { AvisoUbicacion } from '@/components/AvisoUbicacion';
 import { FiltroRubros } from '@/components/FiltroRubros';
 import { TarjetaComercio } from '@/components/TarjetaComercio';
@@ -11,13 +12,11 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { ErrorApi, listarComercios, listarRubros, type Simulacion, setSimulacion } from '@/servicios';
-import type { Comercio, Rubro } from '@/tipos';
+import { useDirectorio } from '@/directorio/DirectorioProvider';
+import { type Simulacion, setSimulacion } from '@/servicios';
 import { useUbicacion } from '@/ubicacion/UbicacionProvider';
 import { distanciasDesde, ordenarPorDistancia } from '@/utilidades/distancias';
 import { calcularApertura } from '@/utilidades/horarios';
-
-type Estado = 'cargando' | 'error' | 'listo';
 
 // Sólo desarrollo: el centro de Concepción del Uruguay, donde están los comercios de la API.
 const CENTRO_CONCEPCION = { latitud: -32.4825, longitud: -58.2372 };
@@ -25,10 +24,9 @@ const CENTRO_CONCEPCION = { latitud: -32.4825, longitud: -58.2372 };
 export default function BuscarScreen() {
   const theme = useTheme();
 
-  const [estado, setEstado] = useState<Estado>('cargando');
-  const [mensajeError, setMensajeError] = useState('');
-  const [comercios, setComercios] = useState<Comercio[]>([]);
-  const [rubros, setRubros] = useState<Rubro[]>([]);
+  // El directorio lo carga (y guarda en el teléfono) el DirectorioProvider: esta pantalla sólo
+  // lo lee. Con la API caída y datos guardados, `estado` es "listo" y `desdeGuardado` es true.
+  const { estado, comercios, rubros, mensajeError, recargar, reintentar } = useDirectorio();
 
   const [busqueda, setBusqueda] = useState('');
   const [rubroSeleccionado, setRubroSeleccionado] = useState<string | null>(null);
@@ -45,33 +43,14 @@ export default function BuscarScreen() {
     }, [actualizarSiHaceFalta]),
   );
 
-  // useFocusEffect (no useEffect con []) porque el PRD quiere los datos
-  // actualizados cada vez que se vuelve a esta pantalla, no sólo la primera vez.
-  // La limpieza (cancelado = true) evita guardar la respuesta si el usuario
-  // ya se fue de la pantalla antes de que termine de "llegar" el mock.
-  const cargar = useCallback(() => {
-    let cancelado = false;
-    setEstado('cargando');
-
-    Promise.all([listarComercios(), listarRubros()])
-      .then(([comerciosRecibidos, rubrosRecibidos]) => {
-        if (cancelado) return;
-        setComercios(comerciosRecibidos);
-        setRubros(rubrosRecibidos);
-        setEstado('listo');
-      })
-      .catch((error: unknown) => {
-        if (cancelado) return;
-        setMensajeError(error instanceof ErrorApi ? error.message : 'Ocurrió un error inesperado.');
-        setEstado('error');
-      });
-
-    return () => {
-      cancelado = true;
-    };
-  }, []);
-
-  useFocusEffect(cargar);
+  // useFocusEffect (no useEffect con []) porque el PRD quiere los datos actualizados cada vez
+  // que se vuelve a esta pantalla, no sólo la primera vez. `recargar` no hace nada si los datos
+  // son de hace menos de 30 segundos.
+  useFocusEffect(
+    useCallback(() => {
+      void recargar();
+    }, [recargar]),
+  );
 
   // Todo esto se recalcula en cada render a partir de los datos y los
   // filtros: no es estado porque se puede derivar de lo que ya tenemos
@@ -148,6 +127,7 @@ export default function BuscarScreen() {
         </View>
 
         {estadoUbicacion !== 'lista' && <AvisoUbicacion />}
+        <AvisoDeConexion />
       </View>
 
       {estado === 'cargando' && (
@@ -162,7 +142,7 @@ export default function BuscarScreen() {
             {mensajeError}
           </ThemedText>
           <Pressable
-            onPress={cargar}
+            onPress={reintentar}
             accessibilityRole="button"
             hitSlop={8}
             style={[styles.botonReintentar, { backgroundColor: theme.backgroundElement }]}>
@@ -213,7 +193,7 @@ export default function BuscarScreen() {
               key={modo}
               onPress={() => {
                 setSimulacion(modo);
-                cargar();
+                reintentar();
               }}
               hitSlop={8}
               style={[styles.botonDev, { backgroundColor: theme.backgroundElement }]}>

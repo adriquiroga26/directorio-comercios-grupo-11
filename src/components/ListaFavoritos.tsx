@@ -1,19 +1,16 @@
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { Link, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useDirectorio } from '@/directorio/DirectorioProvider';
 import { useTheme } from '@/hooks/use-theme';
-import { ErrorApi, listarComercios } from '@/servicios';
-import type { Comercio } from '@/tipos';
 
 interface Props {
   ids: string[]; // los ids de los comercios favoritos (Usuario.favoritos)
 }
-
-type Estado = 'cargando' | 'error' | 'listo';
 
 // La cuenta sólo guarda los ids de los favoritos. Para mostrar sus nombres se pide el
 // listado de comercios y se filtran los favoritos (un favorito dado de baja no aparece
@@ -21,32 +18,15 @@ type Estado = 'cargando' | 'error' | 'listo';
 export function ListaFavoritos({ ids }: Props) {
   const theme = useTheme();
 
-  const [estado, setEstado] = useState<Estado>('cargando');
-  const [mensajeError, setMensajeError] = useState('');
-  const [comercios, setComercios] = useState<Comercio[]>([]);
+  // El directorio compartido (con respaldo en el teléfono): los favoritos se ven también sin
+  // conexión, porque los ids se guardan con la sesión y los comercios con el directorio.
+  const { estado, comercios, mensajeError, recargar, reintentar } = useDirectorio();
 
-  const cargar = useCallback(() => {
-    let cancelado = false;
-    setEstado('cargando');
-
-    listarComercios()
-      .then((recibidos) => {
-        if (cancelado) return;
-        setComercios(recibidos);
-        setEstado('listo');
-      })
-      .catch((error: unknown) => {
-        if (cancelado) return;
-        setMensajeError(error instanceof ErrorApi ? error.message : 'Ocurrió un error inesperado.');
-        setEstado('error');
-      });
-
-    return () => {
-      cancelado = true;
-    };
-  }, []);
-
-  useFocusEffect(cargar);
+  useFocusEffect(
+    useCallback(() => {
+      void recargar();
+    }, [recargar]),
+  );
 
   // Dato derivado (no es estado): se recalcula cuando cambia la lista de favoritos.
   const favoritos = comercios.filter((comercio) => ids.includes(comercio.id));
@@ -66,7 +46,7 @@ export function ListaFavoritos({ ids }: Props) {
           <ThemedText type="small" themeColor="textSecondary" style={styles.textoError}>
             {mensajeError}
           </ThemedText>
-          <Pressable onPress={cargar} accessibilityRole="button" hitSlop={8}>
+          <Pressable onPress={reintentar} accessibilityRole="button" hitSlop={8}>
             <ThemedText type="smallBold">Reintentar</ThemedText>
           </Pressable>
         </View>

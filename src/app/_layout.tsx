@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { DirectorioProvider } from '@/directorio/DirectorioProvider';
 import { SesionProvider, useSesion } from '@/sesion/SesionProvider';
 import { UbicacionProvider } from '@/ubicacion/UbicacionProvider';
 
@@ -65,7 +66,11 @@ export default function RootLayout() {
         {/* La ubicación también se comparte con todas las pantallas (Buscar y Mapa), así el
             permiso se pregunta una sola vez. */}
         <UbicacionProvider>
-          <Navegacion />
+          {/* El directorio de comercios también se comparte: se carga una sola vez y se guarda
+              en el teléfono para poder abrir la app sin conexión. */}
+          <DirectorioProvider>
+            <Navegacion />
+          </DirectorioProvider>
         </UbicacionProvider>
       </SesionProvider>
     </ThemeProvider>

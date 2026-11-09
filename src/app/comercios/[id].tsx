@@ -16,17 +16,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
+import { AvisoDeConexion } from '@/components/AvisoDeConexion';
 import { TarjetaResena } from '@/components/TarjetaResena';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useDirectorio } from '@/directorio/DirectorioProvider';
 import { useTheme } from '@/hooks/use-theme';
 import {
   agregarFavorito,
   borrarResena,
   ErrorApi,
   listarResenasDeComercio,
-  listarRubros,
   obtenerComercio,
   quitarFavorito,
   reportarResena,
@@ -34,7 +35,7 @@ import {
 } from '@/servicios';
 import { useSesion } from '@/sesion/SesionProvider';
 import { useRequiereCuenta } from '@/sesion/useRequiereCuenta';
-import type { Comercio, Rubro } from '@/tipos';
+import type { Comercio } from '@/tipos';
 // La API manda ids como "billetera_virtual"; en pantalla va el texto legible (la tabla
 // de etiquetas se comparte con el formulario de edición de la ficha).
 import { type ModoDeViaje, urlsParaLlegar } from '@/utilidades/comoLlegar';
@@ -64,9 +65,15 @@ export default function FichaComercioScreen() {
   const [estado, setEstado] = useState<Estado>('cargando');
   const [mensajeError, setMensajeError] = useState('');
   const [comercio, setComercio] = useState<Comercio | null>(null);
-  const [rubro, setRubro] = useState<Rubro | null>(null);
   const [resenas, setResenas] = useState<ResenaConAutor[]>([]);
+  // false si no se pudieron pedir las reseñas (sin conexión): el comercio se ve igual, con lo
+  // guardado, pero las reseñas necesitan red (lo dice el PRD).
+  const [resenasDisponibles, setResenasDisponibles] = useState(true);
   const [videoConError, setVideoConError] = useState(false);
+
+  // Los rubros salen del directorio compartido (también funciona sin conexión).
+  const { rubros } = useDirectorio();
+  const rubro = comercio === null ? null : (rubros.find((r) => r.id === comercio.rubroId) ?? null);
   const [guardandoFavorito, setGuardandoFavorito] = useState(false);
   const [reportadas, setReportadas] = useState<string[]>([]); // ids de reseñas que ya reportaste
 
@@ -75,12 +82,14 @@ export default function FichaComercioScreen() {
     setEstado('cargando');
     setVideoConError(false);
 
-    Promise.all([obtenerComercio(id), listarRubros(), listarResenasDeComercio(id)])
-      .then(([comercioRecibido, rubros, resenasRecibidas]) => {
+    // El comercio tiene respaldo en el teléfono (ver obtenerComercio). Las reseñas no: si fallan,
+    // no se rompe toda la ficha, sólo se avisa que las reseñas necesitan conexión (null).
+    Promise.all([obtenerComercio(id), listarResenasDeComercio(id).catch(() => null)])
+      .then(([comercioRecibido, resenasRecibidas]) => {
         if (cancelado) return;
         setComercio(comercioRecibido);
-        setRubro(rubros.find((r) => r.id === comercioRecibido.rubroId) ?? null);
-        setResenas(resenasRecibidas);
+        setResenas(resenasRecibidas ?? []);
+        setResenasDisponibles(resenasRecibidas !== null);
         setEstado('listo');
       })
       .catch((error: unknown) => {
@@ -294,6 +303,11 @@ export default function FichaComercioScreen() {
         <SafeAreaView style={styles.contenedor} edges={['bottom']}>
           <ScrollView contentContainerStyle={styles.scroll}>
               <View style={styles.cuerpo}>
+                {/* Avisa si no hay conexión: lo que se ve es lo guardado en el teléfono. */}
+                <View style={styles.seccion}>
+                  <AvisoDeConexion />
+                </View>
+
                 {comercio.videoUrl && !videoConError ? (
                   <VideoView player={player} style={styles.media} nativeControls />
                 ) : comercio.imagenes[0] ? (
@@ -430,7 +444,11 @@ export default function FichaComercioScreen() {
                     </Pressable>
                   )}
 
-                  {resenas.length === 0 ? (
+                  {!resenasDisponibles ? (
+                    <ThemedText themeColor="textSecondary">
+                      Las reseñas necesitan conexión. Volvé a abrir la ficha cuando tengas internet.
+                    </ThemedText>
+                  ) : resenas.length === 0 ? (
                     <ThemedText themeColor="textSecondary">Todavía no hay reseñas.</ThemedText>
                   ) : (
                     <FlatList

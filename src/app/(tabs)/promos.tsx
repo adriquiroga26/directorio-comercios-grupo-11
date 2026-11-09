@@ -8,8 +8,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { ErrorApi, listarComercios, listarPromociones, listarRubros } from '@/servicios';
-import type { Comercio, Promocion, Rubro } from '@/tipos';
+import { useDirectorio } from '@/directorio/DirectorioProvider';
+import { ErrorApi, listarPromociones } from '@/servicios';
+import type { Promocion } from '@/tipos';
 import { estadoPromocion } from '@/utilidades/promociones';
 
 type Estado = 'cargando' | 'error' | 'listo';
@@ -30,20 +31,20 @@ export default function PromosScreen() {
   const [estado, setEstado] = useState<Estado>('cargando');
   const [mensajeError, setMensajeError] = useState('');
   const [promociones, setPromociones] = useState<Promocion[]>([]);
-  const [comercios, setComercios] = useState<Comercio[]>([]);
-  const [rubros, setRubros] = useState<Rubro[]>([]);
   const [rubroSeleccionado, setRubroSeleccionado] = useState<string | null>(null);
+
+  // Los comercios y rubros (para filtrar por rubro) salen del directorio compartido, que también
+  // funciona sin conexión. Las promociones NO se guardan: el PRD dice que necesitan red.
+  const { comercios, rubros } = useDirectorio();
 
   const cargar = useCallback(() => {
     let cancelado = false;
     setEstado('cargando');
 
-    Promise.all([listarPromociones(), listarComercios(), listarRubros()])
-      .then(([promocionesRecibidas, comerciosRecibidos, rubrosRecibidos]) => {
+    listarPromociones()
+      .then((promocionesRecibidas) => {
         if (cancelado) return;
         setPromociones(promocionesRecibidas);
-        setComercios(comerciosRecibidos);
-        setRubros(rubrosRecibidos);
         setEstado('listo');
       })
       .catch((error: unknown) => {

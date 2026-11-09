@@ -62,7 +62,8 @@
           "cameraPermission": "Permitir que $(PRODUCT_NAME) use la cámara para sacar fotos y grabar videos de tu comercio.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,
