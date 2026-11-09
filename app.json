@@ -50,6 +50,12 @@
         }
       ],
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Permitir que $(PRODUCT_NAME) use tu ubicación para mostrarte los comercios que tenés cerca."
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Permitir que $(PRODUCT_NAME) acceda a tus fotos para elegir las de tu comercio.",

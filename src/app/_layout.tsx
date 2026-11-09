@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { SesionProvider, useSesion } from '@/sesion/SesionProvider';
+import { UbicacionProvider } from '@/ubicacion/UbicacionProvider';
 
 // Layout raíz: define el tema, la sesión y qué pantallas existen en cada momento.
 // El splash nativo se queda a la vista hasta que se sabe si hay una sesión guardada.
@@ -61,7 +62,11 @@ export default function RootLayout() {
       {/* SesionProvider envuelve toda la app: así cualquier pantalla puede leer
           la sesión con useSesion(). */}
       <SesionProvider>
-        <Navegacion />
+        {/* La ubicación también se comparte con todas las pantallas (Buscar y Mapa), así el
+            permiso se pregunta una sola vez. */}
+        <UbicacionProvider>
+          <Navegacion />
+        </UbicacionProvider>
       </SesionProvider>
     </ThemeProvider>
   );

@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AvisoUbicacion } from '@/components/AvisoUbicacion';
 import { TarjetaComercio } from '@/components/TarjetaComercio';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -11,9 +12,14 @@ import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ErrorApi, listarComercios, listarRubros, type Simulacion, setSimulacion } from '@/servicios';
 import type { Comercio, Rubro } from '@/tipos';
+import { useUbicacion } from '@/ubicacion/UbicacionProvider';
+import { distanciasDesde, ordenarPorDistancia } from '@/utilidades/distancias';
 import { calcularApertura } from '@/utilidades/horarios';
 
 type Estado = 'cargando' | 'error' | 'listo';
+
+// Sólo desarrollo: el centro de Concepción del Uruguay, donde están los comercios de la API.
+const CENTRO_CONCEPCION = { latitud: -32.4825, longitud: -58.2372 };
 
 // Chip "Todos" + un chip por rubro. id null = sin filtro de rubro.
 interface ChipRubro {
@@ -32,6 +38,17 @@ export default function BuscarScreen() {
   const [busqueda, setBusqueda] = useState('');
   const [rubroSeleccionado, setRubroSeleccionado] = useState<string | null>(null);
   const [soloAbiertos, setSoloAbiertos] = useState(false);
+  const [masCercaPrimero, setMasCercaPrimero] = useState(false);
+
+  // La ubicación es opcional: sin ella la pantalla funciona igual, sin distancias.
+  const { estado: estadoUbicacion, posicion, actualizarSiHaceFalta, simularPosicion } = useUbicacion();
+
+  // Al volver a esta pantalla, si la posición quedó vieja (la persona caminó), se refresca.
+  useFocusEffect(
+    useCallback(() => {
+      void actualizarSiHaceFalta();
+    }, [actualizarSiHaceFalta]),
+  );
 
   // useFocusEffect (no useEffect con []) porque el PRD quiere los datos
   // actualizados cada vez que se vuelve a esta pantalla, no sólo la primera vez.
@@ -78,6 +95,14 @@ export default function BuscarScreen() {
     return coincideTexto && coincideRubro && coincideAbierto;
   });
 
+  // Con la posición conocida se calcula la distancia a cada comercio (la API no la devuelve) y,
+  // si la persona lo pidió, se ordena del más cerca al más lejos. Sin posición: sin distancias.
+  const distancias = posicion === null ? null : distanciasDesde(posicion, comerciosFiltrados);
+  const comerciosAMostrar =
+    distancias !== null && masCercaPrimero
+      ? ordenarPorDistancia(comerciosFiltrados, distancias)
+      : comerciosFiltrados;
+
   return (
     <SafeAreaView style={styles.contenedor} edges={['top', 'left', 'right']}>
       <View style={styles.encabezado}>
@@ -120,18 +145,37 @@ export default function BuscarScreen() {
           }}
         />
 
-        <Pressable
-          onPress={() => setSoloAbiertos((valor) => !valor)}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: soloAbiertos }}
-          accessibilityLabel="Mostrar sólo los comercios abiertos ahora"
-          hitSlop={8}
-          style={styles.filaSwitch}>
-          {/* pointerEvents="none": el toque lo maneja el Pressable de arriba,
-              así evitamos que tocar el switch dispare el cambio dos veces. */}
-          <Switch value={soloAbiertos} pointerEvents="none" />
-          <ThemedText type="small">Abierto ahora</ThemedText>
-        </Pressable>
+        {/* Los dos interruptores van en la misma fila (flexWrap: si no entran, el segundo
+            baja solo) para dejarle más lugar a la lista. */}
+        <View style={styles.filaSwitches}>
+          <Pressable
+            onPress={() => setSoloAbiertos((valor) => !valor)}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: soloAbiertos }}
+            accessibilityLabel="Mostrar sólo los comercios abiertos ahora"
+            hitSlop={8}
+            style={styles.filaSwitch}>
+            {/* pointerEvents="none": el toque lo maneja el Pressable de arriba,
+                así evitamos que tocar el switch dispare el cambio dos veces. */}
+            <Switch value={soloAbiertos} pointerEvents="none" />
+            <ThemedText type="small">Abierto ahora</ThemedText>
+          </Pressable>
+
+          {estadoUbicacion === 'lista' && (
+            <Pressable
+              onPress={() => setMasCercaPrimero((valor) => !valor)}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: masCercaPrimero }}
+              accessibilityLabel="Ordenar los comercios del más cerca al más lejos"
+              hitSlop={8}
+              style={styles.filaSwitch}>
+              <Switch value={masCercaPrimero} pointerEvents="none" />
+              <ThemedText type="small">Más cerca primero</ThemedText>
+            </Pressable>
+          )}
+        </View>
+
+        {estadoUbicacion !== 'lista' && <AvisoUbicacion />}
       </View>
 
       {estado === 'cargando' && (
@@ -167,16 +211,20 @@ export default function BuscarScreen() {
         </ThemedView>
       )}
 
-      {estado === 'listo' && comerciosFiltrados.length > 0 && (
+      {estado === 'listo' && comerciosAMostrar.length > 0 && (
         <FlatList
-          data={comerciosFiltrados}
+          data={comerciosAMostrar}
           keyExtractor={(comercio) => comercio.id}
           contentContainerStyle={styles.listado}
           ItemSeparatorComponent={() => <View style={{ height: Spacing.two }} />}
           renderItem={({ item }) => (
             <Link href={`/comercios/${item.id}`} asChild>
               <Pressable accessibilityRole="button" accessibilityLabel={`Ver ficha de ${item.nombre}`}>
-                <TarjetaComercio comercio={item} rubro={rubroPorId.get(item.rubroId) ?? null} />
+                <TarjetaComercio
+                  comercio={item}
+                  rubro={rubroPorId.get(item.rubroId) ?? null}
+                  distanciaM={distancias?.get(item.id) ?? null}
+                />
               </Pressable>
             </Link>
           )}
@@ -200,6 +248,26 @@ export default function BuscarScreen() {
               <ThemedText type="small">{modo}</ThemedText>
             </Pressable>
           ))}
+        </View>
+      )}
+
+      {__DEV__ && (
+        <View style={[styles.filaDev, { borderTopColor: theme.backgroundElement }]}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Ubicación:
+          </ThemedText>
+          <Pressable
+            onPress={() => simularPosicion(null)}
+            hitSlop={8}
+            style={[styles.botonDev, { backgroundColor: theme.backgroundElement }]}>
+            <ThemedText type="small">GPS real</ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={() => simularPosicion(CENTRO_CONCEPCION)}
+            hitSlop={8}
+            style={[styles.botonDev, { backgroundColor: theme.backgroundElement }]}>
+            <ThemedText type="small">Centro de Concepción</ThemedText>
+          </Pressable>
         </View>
       )}
     </SafeAreaView>
@@ -237,11 +305,15 @@ const styles = StyleSheet.create({
     minHeight: 32,
     justifyContent: 'center',
   },
+  filaSwitches: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: Spacing.four,
+  },
   filaSwitch: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    alignSelf: 'flex-start',
     minHeight: 48,
   },
   centrado: {
@@ -267,10 +339,11 @@ const styles = StyleSheet.create({
   },
   filaDev: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: Spacing.two,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.one,
     borderTopWidth: 1,
   },
   botonDev: {

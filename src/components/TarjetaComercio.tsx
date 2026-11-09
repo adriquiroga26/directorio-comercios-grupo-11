@@ -8,11 +8,14 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Comercio, Rubro } from '@/tipos';
+import { textoDistancia } from '@/utilidades/distancias';
 import { calcularApertura, textoApertura } from '@/utilidades/horarios';
 
 interface Props {
   comercio: Comercio;
   rubro: Rubro | null;
+  // Distancia desde la persona, en metros. null si no se conoce su ubicación.
+  distanciaM?: number | null;
 }
 
 // Rubro.icono es un string (así viaja en el PRD y va a viajar en la API).
@@ -29,7 +32,7 @@ function colorEstado(abierto: boolean, colorAtenuado: string): string {
   return abierto ? '#2E9E5B' : colorAtenuado;
 }
 
-export function TarjetaComercio({ comercio, rubro }: Props) {
+export function TarjetaComercio({ comercio, rubro, distanciaM = null }: Props) {
   const theme = useTheme();
   const apertura = calcularApertura(comercio);
   const primeraImagen = comercio.imagenes[0] ?? null;
@@ -45,9 +48,17 @@ export function TarjetaComercio({ comercio, rubro }: Props) {
       )}
 
       <View style={styles.info}>
-        <ThemedText type="smallBold" numberOfLines={1}>
-          {comercio.nombre}
-        </ThemedText>
+        <View style={styles.filaNombre}>
+          {/* Hasta dos renglones: así un nombre largo no queda cortado por la distancia. */}
+          <ThemedText type="smallBold" numberOfLines={2} style={styles.nombre}>
+            {comercio.nombre}
+          </ThemedText>
+          {distanciaM !== null && (
+            <ThemedText type="small" themeColor="textSecondary">
+              {textoDistancia(distanciaM)}
+            </ThemedText>
+          )}
+        </View>
 
         <View style={styles.filaRubro}>
           {rubro && <Ionicons name={rubro.icono as NombreIcono} size={14} color={rubro.color} />}
@@ -101,6 +112,14 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.half,
     justifyContent: 'center',
+  },
+  filaNombre: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.two,
+  },
+  nombre: {
+    flex: 1,
   },
   filaRubro: {
     flexDirection: 'row',
