@@ -1,5 +1,5 @@
 import { useLastNotificationResponse } from 'expo-notifications';
-import { useRootNavigationState, useRouter } from 'expo-router';
+import { useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 
 import { useSesion } from '@/sesion/SesionProvider';
@@ -18,11 +18,17 @@ export function EscuchaDeAvisos() {
   // Vale algo (tiene `key`) recién cuando la navegación de la app ya está armada.
   const navegacion = useRootNavigationState();
   const navegacionLista = navegacion?.key !== undefined;
+  // Con la app cerrada, el toque llega mientras se lee la sesión y se pide la huella. Cuando la
+  // sesión se desbloquea, las pantallas protegidas recién se están registrando: abrir la promo en
+  // ese instante se pierde sin avisar. Por eso se espera a que ya esté a la vista la pantalla
+  // principal (las pestañas): recién entonces existen todas las pantallas a las que se puede ir.
+  const segmentos = useSegments();
+  const enPantallaPrincipal = segmentos[0] === '(tabs)';
   // La última notificación tocada (undefined mientras no hubo ninguna).
   const respuesta = useLastNotificationResponse();
 
   useEffect(() => {
-    if (!respuesta || !navegacionLista) return;
+    if (!respuesta || !navegacionLista || !enPantallaPrincipal) return;
     // Con la sesión bloqueada las pantallas de la app no existen todavía (ver el layout raíz).
     // Cuando se desbloquee, `estado` cambia, este efecto vuelve a correr y se abre la promo.
     if (estado === 'bloqueada' || estado === 'cargando') return;
@@ -39,7 +45,7 @@ export function EscuchaDeAvisos() {
     } catch {
       // Si todavía no se puede navegar, se vuelve a intentar cuando cambie algo de lo de arriba.
     }
-  }, [respuesta, estado, navegacionLista, router]);
+  }, [respuesta, estado, navegacionLista, enPantallaPrincipal, router]);
 
   return null;
 }
