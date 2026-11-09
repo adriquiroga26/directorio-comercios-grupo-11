@@ -11,7 +11,7 @@ SplashScreen.preventAutoHideAsync();
 
 // Va adentro del SesionProvider porque necesita leer la sesión con useSesion().
 function Navegacion() {
-  const { estado } = useSesion();
+  const { estado, usuario } = useSesion();
 
   useEffect(() => {
     if (estado !== 'cargando') SplashScreen.hideAsync();
@@ -35,6 +35,13 @@ function Navegacion() {
         <Stack.Screen name="promociones/[id]" />
         {/* Se abre como modal (sube desde abajo): es un formulario que se completa o se cancela. */}
         <Stack.Screen name="resena/[comercioId]" options={{ presentation: 'modal' }} />
+      </Stack.Protected>
+
+      {/* Rutas protegidas por ROL: el panel del comercio sólo existe si la sesión está
+          abierta y la cuenta es de comercio. Un vecino no llega ni escribiendo la dirección. */}
+      <Stack.Protected guard={estado === 'con-sesion' && usuario?.rol === 'comercio'}>
+        <Stack.Screen name="mi-comercio/promociones" />
+        <Stack.Screen name="mi-comercio/promocion" options={{ presentation: 'modal' }} />
       </Stack.Protected>
     </Stack>
   );

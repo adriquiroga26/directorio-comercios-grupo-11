@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FormularioCuenta } from '@/components/FormularioCuenta';
 import { ListaFavoritos } from '@/components/ListaFavoritos';
+import { PanelComercio } from '@/components/PanelComercio';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
@@ -46,8 +47,9 @@ export default function YoScreen() {
             <ThemedText>{usuario.rol === 'comercio' ? 'Comercio' : 'Vecino'}</ThemedText>
           </View>
 
-          {/* Las cuentas de comercio no tienen favoritos. */}
+          {/* Cada tipo de cuenta ve lo suyo: el vecino sus favoritos y el comercio su panel. */}
           {usuario.rol === 'vecino' && <ListaFavoritos ids={usuario.favoritos} />}
+          {usuario.rol === 'comercio' && <PanelComercio />}
 
           <Pressable
             onPress={cerrarSesion}

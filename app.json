@@ -41,7 +41,8 @@
         {
           "faceIDPermission": "Permitir que $(PRODUCT_NAME) use Face ID para desbloquear tu sesión."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -19,3 +19,10 @@ export interface UsoDePromocion {
   codigo: string; // lo que se muestra y se escanea
   validadoEn: string | null;
 }
+
+// Lo que el comercio manda para crear o editar una promoción. El id, el comercio y
+// los usos los pone la API.
+export type DatosPromocion = Pick<
+  Promocion,
+  'titulo' | 'detalle' | 'descuento' | 'desde' | 'hasta' | 'soloApp'
+>;
