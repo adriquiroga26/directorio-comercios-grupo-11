@@ -1,14 +1,16 @@
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { crearResena, editarResena, ErrorApi } from '@/servicios';
+import { usePendientes } from '@/pendientes/PendientesProvider';
+import { editarResena, ErrorApi, publicarResena } from '@/servicios';
+import { useSesion } from '@/sesion/SesionProvider';
 import type { Resena } from '@/tipos';
 import { LARGO_MAXIMO_COMENTARIO, validarResena } from '@/utilidades/resenas';
 
@@ -27,6 +29,8 @@ export default function ResenaScreen() {
     }>();
   const theme = useTheme();
   const router = useRouter();
+  const { usuario } = useSesion();
+  const { recargar: recargarPendientes } = usePendientes();
 
   const esEdicion = resenaId !== undefined;
 
@@ -50,8 +54,17 @@ export default function ResenaScreen() {
       const datos = { estrellas: estrellas as Resena['estrellas'], comentario: comentario.trim() };
       if (esEdicion) {
         await editarResena(resenaId, datos);
-      } else {
-        await crearResena(comercioId, datos);
+      } else if (usuario !== null) {
+        // Sin conexión, la reseña no se pierde: queda guardada en el teléfono y se envía sola
+        // cuando vuelva internet (ver servicios/resenasPendientes).
+        const resultado = await publicarResena(usuario.id, comercioId, datos);
+        if (resultado === 'pendiente') {
+          await recargarPendientes();
+          Alert.alert(
+            'Reseña guardada',
+            'Ahora no hay conexión. Tu reseña quedó guardada en el teléfono y se envía sola apenas vuelva internet.',
+          );
+        }
       }
       // La ficha se actualiza sola al volver (recarga los datos cuando recibe el foco).
       router.back();

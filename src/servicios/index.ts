@@ -7,3 +7,4 @@ export * from './favoritos';
 export * from './miComercio';
 export * from './promociones';
 export * from './resenas';
+export * from './resenasPendientes';

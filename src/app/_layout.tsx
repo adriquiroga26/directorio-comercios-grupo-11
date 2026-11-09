@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { DirectorioProvider } from '@/directorio/DirectorioProvider';
+import { PendientesProvider } from '@/pendientes/PendientesProvider';
 import { SesionProvider, useSesion } from '@/sesion/SesionProvider';
 import { UbicacionProvider } from '@/ubicacion/UbicacionProvider';
 
@@ -69,7 +70,12 @@ export default function RootLayout() {
           {/* El directorio de comercios también se comparte: se carga una sola vez y se guarda
               en el teléfono para poder abrir la app sin conexión. */}
           <DirectorioProvider>
-            <Navegacion />
+            {/* Las reseñas escritas sin conexión también se comparten: este proveedor las
+                envía solas cuando vuelve internet. Va adentro de SesionProvider porque necesita
+                saber quién es la persona. */}
+            <PendientesProvider>
+              <Navegacion />
+            </PendientesProvider>
           </DirectorioProvider>
         </UbicacionProvider>
       </SesionProvider>

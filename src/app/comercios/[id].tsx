@@ -23,6 +23,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useDirectorio } from '@/directorio/DirectorioProvider';
 import { useTheme } from '@/hooks/use-theme';
+import { usePendientes } from '@/pendientes/PendientesProvider';
 import {
   agregarFavorito,
   borrarResena,
@@ -73,6 +74,15 @@ export default function FichaComercioScreen() {
 
   // Los rubros salen del directorio compartido (también funciona sin conexión).
   const { rubros } = useDirectorio();
+  // Las reseñas que escribiste sin conexión y todavía no se enviaron.
+  const { pendientes, descartar, sincronizar } = usePendientes();
+
+  // Al abrir la ficha se intenta enviar lo que haya pendiente (si no hay nada, no hace nada).
+  useFocusEffect(
+    useCallback(() => {
+      void sincronizar();
+    }, [sincronizar]),
+  );
   const rubro = comercio === null ? null : (rubros.find((r) => r.id === comercio.rubroId) ?? null);
   const [guardandoFavorito, setGuardandoFavorito] = useState(false);
   const [reportadas, setReportadas] = useState<string[]>([]); // ids de reseñas que ya reportaste
@@ -169,6 +179,10 @@ export default function FichaComercioScreen() {
   // Tu reseña de este comercio, si ya dejaste una (la API admite una por vecino y comercio).
   const miResena =
     usuario === null ? null : (resenas.find((resena) => resena.usuarioId === usuario.id) ?? null);
+
+  // Tu reseña de este comercio escrita sin conexión, si todavía espera para enviarse.
+  const miPendiente =
+    comercio === null ? null : (pendientes.find((p) => p.comercioId === comercio.id) ?? null);
 
   function avisarError(error: unknown) {
     Alert.alert(
@@ -434,7 +448,7 @@ export default function FichaComercioScreen() {
 
                   {/* Una reseña por vecino y comercio: si ya dejaste una, se edita desde la
                       propia reseña. Las cuentas de comercio no reseñan. */}
-                  {usuario?.rol !== 'comercio' && miResena === null && (
+                  {usuario?.rol !== 'comercio' && miResena === null && miPendiente === null && (
                     <Pressable
                       onPress={dejarResena}
                       accessibilityRole="button"
@@ -442,6 +456,45 @@ export default function FichaComercioScreen() {
                       <Ionicons name="create-outline" size={18} color={theme.text} />
                       <ThemedText type="smallBold">Dejar reseña</ThemedText>
                     </Pressable>
+                  )}
+
+                  {/* Tu reseña escrita sin conexión: todavía no está en la API, pero se ve acá
+                      con el aviso de que espera para enviarse (o de por qué no se pudo). */}
+                  {miPendiente !== null && usuario !== null && (
+                    <TarjetaResena
+                      resena={{
+                        id: miPendiente.id,
+                        comercioId: miPendiente.comercioId,
+                        usuarioId: miPendiente.usuarioId,
+                        estrellas: miPendiente.estrellas,
+                        comentario: miPendiente.comentario,
+                        respuesta: null,
+                        reportada: false,
+                        creadaEn: miPendiente.creadaEn,
+                        sincronizada: false,
+                        nombreAutor: `${nombrePublico(usuario.nombre)} (vos)`,
+                      }}
+                      pie={
+                        <View style={styles.filaAcciones}>
+                          <ThemedText
+                            type="small"
+                            themeColor={miPendiente.error === null ? 'textSecondary' : undefined}
+                            style={[styles.textoPendiente, miPendiente.error !== null && styles.errorPendiente]}>
+                            {miPendiente.error === null
+                              ? 'Pendiente de enviar: se envía sola cuando vuelva internet.'
+                              : `No se pudo enviar: ${miPendiente.error}`}
+                          </ThemedText>
+                          <Pressable
+                            onPress={() => void descartar(miPendiente.id)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Descartar mi reseña pendiente"
+                            hitSlop={8}
+                            style={styles.accion}>
+                            <ThemedText type="smallBold">Descartar</ThemedText>
+                          </Pressable>
+                        </View>
+                      }
+                    />
                   )}
 
                   {!resenasDisponibles ? (
@@ -629,6 +682,12 @@ const styles = StyleSheet.create({
   accion: {
     minHeight: 40,
     justifyContent: 'center',
+  },
+  textoPendiente: {
+    flex: 1,
+  },
+  errorPendiente: {
+    color: '#C0392B',
   },
   centrado: {
     flex: 1,

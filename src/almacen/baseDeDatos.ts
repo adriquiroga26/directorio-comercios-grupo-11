@@ -7,7 +7,7 @@ const NOMBRE_DE_LA_BASE = 'directorio.db';
 
 // Cada vez que cambia la estructura de las tablas se sube este número y se agrega un paso en
 // `migrar`. SQLite guarda el número de versión de la base en `PRAGMA user_version`.
-const VERSION_ACTUAL = 1;
+const VERSION_ACTUAL = 2;
 
 // Se abre una sola vez y todos comparten la misma conexión. Se guarda la PROMESA (no la base)
 // para que dos pedidos a la vez no la abran dos veces.
@@ -55,6 +55,24 @@ async function migrar(base: SQLite.SQLiteDatabase): Promise<void> {
         datos TEXT NOT NULL
       );
       PRAGMA user_version = 1;
+    `);
+  }
+
+  if (version < 2) {
+    // La cola de reseñas escritas sin conexión que esperan para enviarse. `id` es el que genera
+    // el teléfono (la API lo usa para no duplicar). `error` queda en NULL mientras espera su
+    // turno y guarda el motivo si la API la rechazó para siempre.
+    await base.execAsync(`
+      CREATE TABLE IF NOT EXISTS resenas_pendientes (
+        id TEXT PRIMARY KEY NOT NULL,
+        usuario_id TEXT NOT NULL,
+        comercio_id TEXT NOT NULL,
+        estrellas INTEGER NOT NULL,
+        comentario TEXT NOT NULL,
+        creada_en TEXT NOT NULL,
+        error TEXT
+      );
+      PRAGMA user_version = 2;
     `);
   }
 }

@@ -25,11 +25,21 @@ export async function listarResenasDeComercio(comercioId: string): Promise<Resen
 // falta para dejar reseñas"). Todos los errores llegan como ErrorApi con mensaje para
 // mostrar. Al crear, la API también recalcula el puntaje y la cantidad del comercio.
 
-// Sólo vecinos, y una reseña por vecino y comercio (RESENA_YA_EXISTE si ya dejó una).
-export async function crearResena(comercioId: string, datos: DatosResena): Promise<Resena> {
+// Lo que se manda para crear una reseña. El `id` lo genera el teléfono (así una reseña escrita sin
+// conexión ya tiene su identidad) y la API lo usa para no duplicarla si se reenvía. La
+// `creadaEn` es opcional: sin ella, la API usa el momento en que recibe la reseña.
+export interface ResenaParaEnviar extends DatosResena {
+  id: string;
+  comercioId: string;
+  creadaEn?: string;
+}
+
+// Sólo vecinos, y una reseña por vecino y comercio (RESENA_YA_EXISTE si ya dejó una). Reenviar
+// el mismo `id` no duplica: la API devuelve la reseña que ya tenía.
+export async function enviarResena({ comercioId, ...cuerpo }: ResenaParaEnviar): Promise<Resena> {
   const { datos: resena } = await pedir<Resena>(
     `/comercios/${encodeURIComponent(comercioId)}/resenas`,
-    { metodo: 'POST', cuerpo: datos },
+    { metodo: 'POST', cuerpo },
   );
   return resena;
 }

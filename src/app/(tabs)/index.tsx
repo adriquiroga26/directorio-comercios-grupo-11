@@ -12,9 +12,11 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { guardarPreferenciasBusqueda, leerPreferenciasBusqueda } from '@/almacen/preferencias';
 import { useDirectorio } from '@/directorio/DirectorioProvider';
 import { type Simulacion, setSimulacion } from '@/servicios';
 import { useUbicacion } from '@/ubicacion/UbicacionProvider';
+import type { PreferenciasBusqueda } from '@/utilidades/preferencias';
 import { distanciasDesde, ordenarPorDistancia } from '@/utilidades/distancias';
 import { calcularApertura } from '@/utilidades/horarios';
 
@@ -29,9 +31,25 @@ export default function BuscarScreen() {
   const { estado, comercios, rubros, mensajeError, recargar, reintentar } = useDirectorio();
 
   const [busqueda, setBusqueda] = useState('');
-  const [rubroSeleccionado, setRubroSeleccionado] = useState<string | null>(null);
-  const [soloAbiertos, setSoloAbiertos] = useState(false);
-  const [masCercaPrimero, setMasCercaPrimero] = useState(false);
+
+  // Los filtros (rubro, "Abierto ahora", "Más cerca primero") se recuerdan aunque se cierre la
+  // app: se leen del kv-store al arrancar y se guardan cada vez que se cambia uno. El texto de la
+  // búsqueda NO se recuerda a propósito: es algo de este momento.
+  const [preferencias, setPreferencias] = useState(leerPreferenciasBusqueda);
+  const { rubroId: rubroGuardado, soloAbiertos, masCercaPrimero } = preferencias;
+
+  function cambiarPreferencias(cambios: Partial<PreferenciasBusqueda>) {
+    const nuevas = { ...preferencias, ...cambios };
+    setPreferencias(nuevas);
+    guardarPreferenciasBusqueda(nuevas);
+  }
+
+  // Si el rubro guardado ya no existe (la cátedra lo sacó), se ignora en vez de mostrar una lista
+  // vacía sin explicación. Mientras los rubros no llegaron, no se puede saber: se respeta.
+  const rubroSeleccionado =
+    rubroGuardado !== null && (rubros.length === 0 || rubros.some((r) => r.id === rubroGuardado))
+      ? rubroGuardado
+      : null;
 
   // La ubicación es opcional: sin ella la pantalla funciona igual, sin distancias.
   const { estado: estadoUbicacion, posicion, actualizarSiHaceFalta, simularPosicion } = useUbicacion();
@@ -93,14 +111,14 @@ export default function BuscarScreen() {
         <FiltroRubros
           rubros={rubros}
           seleccionado={rubroSeleccionado}
-          onElegir={setRubroSeleccionado}
+          onElegir={(rubroId) => cambiarPreferencias({ rubroId })}
         />
 
         {/* Los dos interruptores van en la misma fila (flexWrap: si no entran, el segundo
             baja solo) para dejarle más lugar a la lista. */}
         <View style={styles.filaSwitches}>
           <Pressable
-            onPress={() => setSoloAbiertos((valor) => !valor)}
+            onPress={() => cambiarPreferencias({ soloAbiertos: !soloAbiertos })}
             accessibilityRole="switch"
             accessibilityState={{ checked: soloAbiertos }}
             accessibilityLabel="Mostrar sólo los comercios abiertos ahora"
@@ -114,7 +132,7 @@ export default function BuscarScreen() {
 
           {estadoUbicacion === 'lista' && (
             <Pressable
-              onPress={() => setMasCercaPrimero((valor) => !valor)}
+              onPress={() => cambiarPreferencias({ masCercaPrimero: !masCercaPrimero })}
               accessibilityRole="switch"
               accessibilityState={{ checked: masCercaPrimero }}
               accessibilityLabel="Ordenar los comercios del más cerca al más lejos"
