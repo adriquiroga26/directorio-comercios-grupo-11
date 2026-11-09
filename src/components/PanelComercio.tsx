@@ -88,6 +88,16 @@ export function PanelComercio() {
       )}
 
       <Pressable
+        onPress={() => router.push('/mi-comercio/ficha')}
+        accessibilityRole="button"
+        accessibilityLabel="Editar los datos de mi comercio"
+        style={[styles.fila, { backgroundColor: theme.backgroundElement }]}>
+        <Ionicons name="create-outline" size={18} color={theme.text} />
+        <ThemedText style={styles.textoFila}>Datos del comercio</ThemedText>
+        <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+      </Pressable>
+
+      <Pressable
         onPress={() => router.push('/mi-comercio/promociones')}
         accessibilityRole="button"
         accessibilityLabel="Ver y administrar mis promociones"

@@ -1,4 +1,4 @@
-import type { Comercio, DatosPromocion, Promocion, UsoDePromocion } from '@/tipos';
+import type { Comercio, DatosFicha, DatosPromocion, Promocion, UsoDePromocion } from '@/tipos';
 
 import { pedir } from './cliente';
 
@@ -9,6 +9,13 @@ import { pedir } from './cliente';
 // El comercio de la cuenta (la API sabe cuál es por el token).
 export async function obtenerMiComercio(): Promise<Comercio> {
   const { datos } = await pedir<Comercio>('/mi-comercio');
+  return datos;
+}
+
+// Cambia datos de la ficha. Sólo se manda lo que cambió; lo demás queda igual. Errores
+// posibles: VALIDACION_FALLIDA (con el mensaje del campo que falló).
+export async function editarMiComercio(cambios: DatosFicha): Promise<Comercio> {
+  const { datos } = await pedir<Comercio>('/mi-comercio', { metodo: 'PATCH', cuerpo: cambios });
   return datos;
 }
 

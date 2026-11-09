@@ -34,7 +34,10 @@ import {
 } from '@/servicios';
 import { useSesion } from '@/sesion/SesionProvider';
 import { useRequiereCuenta } from '@/sesion/useRequiereCuenta';
-import type { Comercio, MedioDePago, Rubro } from '@/tipos';
+import type { Comercio, Rubro } from '@/tipos';
+// La API manda ids como "billetera_virtual"; en pantalla va el texto legible (la tabla
+// de etiquetas se comparte con el formulario de edición de la ficha).
+import { ETIQUETA_MEDIO_DE_PAGO } from '@/utilidades/ficha';
 import { calcularApertura, resumenSemanal, textoApertura } from '@/utilidades/horarios';
 import { nombrePublico } from '@/utilidades/usuarios';
 
@@ -45,17 +48,6 @@ type Estado = 'cargando' | 'error' | 'listo';
 type NombreIcono = ComponentProps<typeof Ionicons>['name'];
 
 const ALTO_MEDIA = 220;
-
-// La API manda ids como "billetera_virtual"; en pantalla va el texto legible.
-// Record<MedioDePago, string> obliga a tener una etiqueta por cada medio:
-// si se agrega uno al tipo, TypeScript avisa que falta acá.
-const ETIQUETA_MEDIO_DE_PAGO: Record<MedioDePago, string> = {
-  efectivo: 'Efectivo',
-  debito: 'Débito',
-  credito: 'Crédito',
-  transferencia: 'Transferencia',
-  billetera_virtual: 'Billetera virtual',
-};
 
 export default function FichaComercioScreen() {
   // useLocalSearchParams siempre entrega strings (o arrays de strings).
