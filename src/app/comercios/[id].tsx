@@ -1,5 +1,6 @@
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { Image } from 'expo-image';
+import * as Haptics from 'expo-haptics';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { type ComponentProps, useCallback, useEffect, useState } from 'react';
 import {
@@ -140,7 +141,11 @@ export default function FichaComercioScreen() {
               favoritos: usuario.favoritos.filter((favorito) => favorito !== comercioId),
             }),
           )
-        : agregarFavorito(comercioId).then(actualizarUsuario);
+        : agregarFavorito(comercioId).then((usuarioActualizado) => {
+            actualizarUsuario(usuarioActualizado);
+            // El PRD: vibración "al guardar un favorito". Una vibración corta de éxito.
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          });
 
       operacion
         .catch((error: unknown) => {

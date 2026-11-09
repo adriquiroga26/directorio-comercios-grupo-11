@@ -1,12 +1,13 @@
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ErrorApi, obtenerMiComercio } from '@/servicios';
+import { pedirDesbloqueo } from '@/sesion/biometria';
 import type { Comercio } from '@/tipos';
 
 type Estado = 'cargando' | 'error' | 'listo';
@@ -44,6 +45,23 @@ export function PanelComercio() {
 
   useFocusEffect(cargar);
 
+  // El PRD: "el comercio reingresa con huella antes de escanear". Validar códigos es una acción
+  // delicada, así que antes de abrir la cámara se vuelve a pedir la huella o el rostro.
+  function abrirValidacion() {
+    pedirDesbloqueo().then((resultado) => {
+      if (resultado === 'rechazada') {
+        Alert.alert(
+          'No pudimos confirmar tu identidad',
+          'Para validar códigos tenés que identificarte con tu huella o tu rostro.',
+        );
+        return;
+      }
+      // 'ok': se identificó. 'sin-biometria': el teléfono no tiene huella ni rostro registrados,
+      // no hay con qué pedirla y se entra igual (la sesión ya estaba abierta).
+      router.push('/mi-comercio/validar');
+    });
+  }
+
   return (
     <View style={styles.seccion}>
       <ThemedText type="smallBold">Mi comercio</ThemedText>
@@ -76,6 +94,16 @@ export function PanelComercio() {
         style={[styles.fila, { backgroundColor: theme.backgroundElement }]}>
         <Ionicons name="pricetag-outline" size={18} color={theme.text} />
         <ThemedText style={styles.textoFila}>Mis promociones</ThemedText>
+        <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+      </Pressable>
+
+      <Pressable
+        onPress={abrirValidacion}
+        accessibilityRole="button"
+        accessibilityLabel="Validar el código de un cliente"
+        style={[styles.fila, { backgroundColor: theme.backgroundElement }]}>
+        <Ionicons name="qr-code-outline" size={18} color={theme.text} />
+        <ThemedText style={styles.textoFila}>Validar código</ThemedText>
         <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
       </Pressable>
     </View>

@@ -1,4 +1,4 @@
-import type { Comercio, DatosPromocion, Promocion } from '@/tipos';
+import type { Comercio, DatosPromocion, Promocion, UsoDePromocion } from '@/tipos';
 
 import { pedir } from './cliente';
 
@@ -39,6 +39,19 @@ export async function editarPromocion(
     { metodo: 'PATCH', cuerpo: datos },
   );
   return promocion;
+}
+
+// Registra que un cliente usó una promo: el comercio manda el código que le muestra el
+// cliente (o que escanea de su QR) y la API devuelve el uso con `validadoEn`, y suma uno a
+// los usos de la promo. La API acepta el código con espacios o en minúsculas.
+// Errores posibles (con mensaje para mostrar): CODIGO_INVALIDO, CODIGO_YA_VALIDADO,
+// PROMO_DE_OTRO_COMERCIO, PROMO_VENCIDA y PROMO_NO_EMPEZO.
+export async function validarCodigo(codigo: string): Promise<UsoDePromocion> {
+  const { datos } = await pedir<UsoDePromocion>('/mi-comercio/usos/validar', {
+    metodo: 'POST',
+    cuerpo: { codigo },
+  });
+  return datos;
 }
 
 // Baja lógica: la promo deja de verse para el público (`activa: false`) pero se conserva

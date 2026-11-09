@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -19,6 +20,7 @@ import { estaPorVencer, estadoPromocion } from '@/utilidades/promociones';
 type Estado = 'cargando' | 'error' | 'listo';
 
 const ALTO_IMAGEN = 180;
+const ALTO_QR = 180;
 
 // Detalle de una promoción: de qué se trata, hasta cuándo dura y qué condiciones tiene
 // (lo que pide el PRD). Si es exclusiva de la app, permite pedir el código que el
@@ -222,6 +224,12 @@ export default function DetallePromocionScreen() {
                           accessibilityLabel={`Tu código es ${codigo.codigo}`}>
                           {codigo.codigo}
                         </ThemedText>
+                        {/* El mismo código como QR, para que el comercio lo escanee con la cámara.
+                            Va sobre un recuadro blanco: un QR necesita fondo claro para leerse,
+                            también con el tema oscuro. */}
+                        <View style={styles.marcoQr} accessibilityLabel="Código QR de tu promoción">
+                          <QRCode value={codigo.codigo} size={ALTO_QR} />
+                        </View>
                       </View>
                     )}
 
@@ -309,6 +317,12 @@ const styles = StyleSheet.create({
   },
   codigo: {
     letterSpacing: 2,
+  },
+  marcoQr: {
+    padding: Spacing.three,
+    marginTop: Spacing.two,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Spacing.two,
   },
   error: {
     color: '#C0392B',

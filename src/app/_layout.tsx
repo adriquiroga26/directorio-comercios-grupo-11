@@ -42,6 +42,7 @@ function Navegacion() {
       <Stack.Protected guard={estado === 'con-sesion' && usuario?.rol === 'comercio'}>
         <Stack.Screen name="mi-comercio/promociones" />
         <Stack.Screen name="mi-comercio/promocion" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="mi-comercio/validar" />
       </Stack.Protected>
     </Stack>
   );

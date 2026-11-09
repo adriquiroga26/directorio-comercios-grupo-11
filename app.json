@@ -42,7 +42,13 @@
           "faceIDPermission": "Permitir que $(PRODUCT_NAME) use Face ID para desbloquear tu sesión."
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir que $(PRODUCT_NAME) use la cámara para escanear los códigos de las promociones."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
