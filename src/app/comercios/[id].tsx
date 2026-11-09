@@ -37,6 +37,7 @@ import { useRequiereCuenta } from '@/sesion/useRequiereCuenta';
 import type { Comercio, Rubro } from '@/tipos';
 // La API manda ids como "billetera_virtual"; en pantalla va el texto legible (la tabla
 // de etiquetas se comparte con el formulario de edición de la ficha).
+import { type ModoDeViaje, urlsParaLlegar } from '@/utilidades/comoLlegar';
 import { ETIQUETA_MEDIO_DE_PAGO } from '@/utilidades/ficha';
 import { calcularApertura, resumenSemanal, textoApertura } from '@/utilidades/horarios';
 import { nombrePublico } from '@/utilidades/usuarios';
@@ -219,21 +220,29 @@ export default function FichaComercioScreen() {
     });
   }
 
-  function abrirEnMapa() {
+  // Abre la primera dirección que el teléfono sepa abrir (ver urlsParaLlegar). Linking.openURL
+  // falla si ninguna app puede con esa dirección: entonces se prueba la siguiente.
+  async function abrirCon(modo: ModoDeViaje) {
     if (!comercio) return;
-    // Usa las coordenadas fijas del comercio, no la ubicación del usuario
-    // (eso necesita expo-location, Unidad 4, todavía no vista). Sólo abre
-    // la app de mapas del teléfono con Linking, como pide el PRD.
-    const { latitud, longitud } = comercio.coordenadas;
-    const etiqueta = encodeURIComponent(comercio.nombre);
-    const url =
-      Platform.OS === 'ios'
-        ? `maps://?q=${etiqueta}&ll=${latitud},${longitud}`
-        : `geo:${latitud},${longitud}?q=${latitud},${longitud}(${etiqueta})`;
+    for (const url of urlsParaLlegar(comercio.coordenadas, modo, Platform.OS)) {
+      try {
+        await Linking.openURL(url);
+        return;
+      } catch {
+        // Esa dirección no se pudo abrir: se prueba la que sigue.
+      }
+    }
+    Alert.alert('No pudimos abrir la app de mapas', 'Probá de nuevo o buscá la dirección a mano.');
+  }
 
-    Linking.openURL(url).catch(() => {
-      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${latitud},${longitud}`);
-    });
+  // El PRD: "un botón para que el teléfono abra la app de mapas y lo lleve caminando o en auto".
+  // La app de mapas arma la ruta desde donde está la persona hasta el comercio.
+  function comoLlegar() {
+    Alert.alert('¿Cómo querés llegar?', comercio?.direccion, [
+      { text: 'A pie', onPress: () => void abrirCon('a-pie') },
+      { text: 'En auto', onPress: () => void abrirCon('en-auto') },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
   }
 
   return (
@@ -355,7 +364,7 @@ export default function FichaComercioScreen() {
                       onPress={() => Linking.openURL(`https://wa.me/${comercio.whatsapp}`)}
                     />
                   )}
-                  <BotonAccion icono="navigate-outline" etiqueta="Ir" onPress={abrirEnMapa} />
+                  <BotonAccion icono="navigate-outline" etiqueta="Ir" onPress={comoLlegar} />
                   {comercio.instagram && (
                     <BotonAccion
                       icono="logo-instagram"
