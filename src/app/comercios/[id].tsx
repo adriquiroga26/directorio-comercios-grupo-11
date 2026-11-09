@@ -1,6 +1,6 @@
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { Image } from 'expo-image';
-import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { type ComponentProps, useCallback, useEffect, useState } from 'react';
 import {
   Alert,
@@ -22,17 +22,20 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   agregarFavorito,
+  borrarResena,
   ErrorApi,
   listarResenasDeComercio,
   listarRubros,
   obtenerComercio,
   quitarFavorito,
+  reportarResena,
   type ResenaConAutor,
 } from '@/servicios';
 import { useSesion } from '@/sesion/SesionProvider';
 import { useRequiereCuenta } from '@/sesion/useRequiereCuenta';
 import type { Comercio, MedioDePago, Rubro } from '@/tipos';
 import { calcularApertura, resumenSemanal, textoApertura } from '@/utilidades/horarios';
+import { nombrePublico } from '@/utilidades/usuarios';
 
 type Estado = 'cargando' | 'error' | 'listo';
 
@@ -60,6 +63,7 @@ export default function FichaComercioScreen() {
   // habría que hacer Number(id) antes de usarlo.
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
+  const router = useRouter();
   const { usuario, actualizarUsuario } = useSesion();
   const requerirCuenta = useRequiereCuenta();
 
@@ -70,6 +74,7 @@ export default function FichaComercioScreen() {
   const [resenas, setResenas] = useState<ResenaConAutor[]>([]);
   const [videoConError, setVideoConError] = useState(false);
   const [guardandoFavorito, setGuardandoFavorito] = useState(false);
+  const [reportadas, setReportadas] = useState<string[]>([]); // ids de reseñas que ya reportaste
 
   const cargar = useCallback(() => {
     let cancelado = false;
@@ -145,6 +150,69 @@ export default function FichaComercioScreen() {
           );
         })
         .finally(() => setGuardandoFavorito(false));
+    });
+  }
+
+  // Tu reseña de este comercio, si ya dejaste una (la API admite una por vecino y comercio).
+  const miResena =
+    usuario === null ? null : (resenas.find((resena) => resena.usuarioId === usuario.id) ?? null);
+
+  function avisarError(error: unknown) {
+    Alert.alert(
+      'No se pudo completar',
+      error instanceof ErrorApi ? error.message : 'Ocurrió un error inesperado.',
+    );
+  }
+
+  // La reseña se escribe en otra pantalla (modal). Al volver, esta ficha se recarga sola.
+  function dejarResena() {
+    if (comercio === null) return;
+    const comercioId = comercio.id;
+    requerirCuenta(() => router.push({ pathname: '/resena/[comercioId]', params: { comercioId } }));
+  }
+
+  // Los parámetros de una ruta son texto: por eso las estrellas se pasan con String().
+  function editarMiResena(resena: ResenaConAutor) {
+    router.push({
+      pathname: '/resena/[comercioId]',
+      params: {
+        comercioId: resena.comercioId,
+        resenaId: resena.id,
+        estrellas: String(resena.estrellas),
+        comentario: resena.comentario,
+      },
+    });
+  }
+
+  function borrarMiResena(resena: ResenaConAutor) {
+    Alert.alert('Borrar reseña', '¿Seguro que querés borrar tu reseña? No se puede deshacer.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Borrar',
+        style: 'destructive',
+        // Después de borrar se vuelve a cargar la ficha: cambian el puntaje y la cantidad.
+        onPress: () => {
+          borrarResena(resena.id).then(cargar).catch(avisarError);
+        },
+      },
+    ]);
+  }
+
+  function reportar(resena: ResenaConAutor) {
+    requerirCuenta(() => {
+      Alert.alert('Reportar reseña', '¿Querés reportar esta reseña como ofensiva?', [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Reportar',
+          onPress: () => {
+            // La reseña sigue visible (el PRD sólo pide el botón de reportar); acá se
+            // anota que ya la reportaste para no ofrecer el botón de nuevo.
+            reportarResena(resena.id)
+              .then(() => setReportadas((anteriores) => [...anteriores, resena.id]))
+              .catch(avisarError);
+          },
+        },
+      ]);
     });
   }
 
@@ -317,6 +385,19 @@ export default function FichaComercioScreen() {
                   <ThemedText type="smallBold">
                     Reseñas{comercio.cantidadResenas > 0 ? ` · ${comercio.puntaje.toFixed(1)} ★` : ''}
                   </ThemedText>
+
+                  {/* Una reseña por vecino y comercio: si ya dejaste una, se edita desde la
+                      propia reseña. Las cuentas de comercio no reseñan. */}
+                  {usuario?.rol !== 'comercio' && miResena === null && (
+                    <Pressable
+                      onPress={dejarResena}
+                      accessibilityRole="button"
+                      style={[styles.botonResena, { backgroundColor: theme.backgroundElement }]}>
+                      <Ionicons name="create-outline" size={18} color={theme.text} />
+                      <ThemedText type="smallBold">Dejar reseña</ThemedText>
+                    </Pressable>
+                  )}
+
                   {resenas.length === 0 ? (
                     <ThemedText themeColor="textSecondary">Todavía no hay reseñas.</ThemedText>
                   ) : (
@@ -324,15 +405,64 @@ export default function FichaComercioScreen() {
                       data={resenas}
                       keyExtractor={(resena) => resena.id}
                       scrollEnabled={false}
+                      // La lista es PureComponent: sin extraData no se redibuja cuando
+                      // cambia la sesión o las reseñas reportadas (no están en `data`).
+                      extraData={{ reportadas, usuario }}
                       ItemSeparatorComponent={() => (
                         <View style={[styles.separadorResena, { backgroundColor: theme.backgroundElement }]} />
                       )}
-                      renderItem={({ item }) => <TarjetaResena resena={item} />}
+                      renderItem={({ item }) => {
+                        const esMia = usuario !== null && item.usuarioId === usuario.id;
+                        // La API no entrega nombres de otros usuarios; el propio sí lo sabemos.
+                        const resena = esMia
+                          ? { ...item, nombreAutor: `${nombrePublico(usuario.nombre)} (vos)` }
+                          : item;
+
+                        return (
+                          <TarjetaResena
+                            resena={resena}
+                            pie={
+                              esMia ? (
+                                <View style={styles.filaAcciones}>
+                                  <Pressable
+                                    onPress={() => editarMiResena(item)}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Editar mi reseña"
+                                    hitSlop={8}
+                                    style={styles.accion}>
+                                    <ThemedText type="smallBold">Editar</ThemedText>
+                                  </Pressable>
+                                  <Pressable
+                                    onPress={() => borrarMiResena(item)}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Borrar mi reseña"
+                                    hitSlop={8}
+                                    style={styles.accion}>
+                                    <ThemedText type="smallBold">Borrar</ThemedText>
+                                  </Pressable>
+                                </View>
+                              ) : reportadas.includes(item.id) ? (
+                                <ThemedText type="small" themeColor="textSecondary">
+                                  Reportaste esta reseña.
+                                </ThemedText>
+                              ) : (
+                                <Pressable
+                                  onPress={() => reportar(item)}
+                                  accessibilityRole="button"
+                                  accessibilityLabel="Reportar esta reseña como ofensiva"
+                                  hitSlop={8}
+                                  style={styles.accion}>
+                                  <ThemedText type="small" themeColor="textSecondary">
+                                    Reportar
+                                  </ThemedText>
+                                </Pressable>
+                              )
+                            }
+                          />
+                        );
+                      }}
                     />
                   )}
-                  {/* Dejar tu propia reseña, editarla/borrarla y reportar necesitan
-                      cuenta de usuario (login con token + biometría es Unidad 6,
-                      todavía no vista): pendiente hasta esa unidad. */}
                 </View>
               </View>
           </ScrollView>
@@ -424,6 +554,22 @@ const styles = StyleSheet.create({
   },
   separadorResena: {
     height: 1,
+  },
+  botonResena: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    minHeight: 48,
+    borderRadius: Spacing.five,
+  },
+  filaAcciones: {
+    flexDirection: 'row',
+    gap: Spacing.four,
+  },
+  accion: {
+    minHeight: 40,
+    justifyContent: 'center',
   },
   centrado: {
     flex: 1,

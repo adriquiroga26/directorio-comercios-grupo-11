@@ -33,6 +33,8 @@ function Navegacion() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="comercios/[id]" />
         <Stack.Screen name="promociones/[id]" />
+        {/* Se abre como modal (sube desde abajo): es un formulario que se completa o se cancela. */}
+        <Stack.Screen name="resena/[comercioId]" options={{ presentation: 'modal' }} />
       </Stack.Protected>
     </Stack>
   );

@@ -1,4 +1,5 @@
 import Ionicons from '@react-native-vector-icons/ionicons';
+import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -9,9 +10,13 @@ import { fechaConAnio } from '@/utilidades/fechas';
 
 interface Props {
   resena: ResenaConAutor;
+  // Lo que se muestra debajo de la reseña (los botones de editar, borrar o reportar).
+  // Lo arma la pantalla, que es quien sabe de quién es la reseña; la tarjeta sólo
+  // lo dibuja.
+  pie?: ReactNode;
 }
 
-export function TarjetaResena({ resena }: Props) {
+export function TarjetaResena({ resena, pie }: Props) {
   const theme = useTheme();
 
   return (
@@ -43,6 +48,8 @@ export function TarjetaResena({ resena }: Props) {
           </ThemedText>
         </View>
       )}
+
+      {pie}
     </View>
   );
 }
