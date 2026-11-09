@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AvisosDeCuenta } from '@/components/AvisosDeCuenta';
 import { FormularioCuenta } from '@/components/FormularioCuenta';
 import { FotosGuardadas } from '@/components/FotosGuardadas';
 import { ListaFavoritos } from '@/components/ListaFavoritos';
@@ -50,6 +51,7 @@ export default function YoScreen() {
 
           {/* Cada tipo de cuenta ve lo suyo: el vecino sus favoritos y el comercio su panel. */}
           {usuario.rol === 'vecino' && <ListaFavoritos ids={usuario.favoritos} />}
+          {usuario.rol === 'vecino' && <AvisosDeCuenta />}
           {usuario.rol === 'comercio' && <PanelComercio />}
 
           <FotosGuardadas />

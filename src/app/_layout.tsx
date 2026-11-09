@@ -3,6 +3,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { AvisosProvider } from '@/avisos/AvisosProvider';
+import { EscuchaDeAvisos } from '@/avisos/EscuchaDeAvisos';
 import { DirectorioProvider } from '@/directorio/DirectorioProvider';
 import { PendientesProvider } from '@/pendientes/PendientesProvider';
 import { SesionProvider, useSesion } from '@/sesion/SesionProvider';
@@ -24,7 +26,9 @@ function Navegacion() {
   if (estado === 'cargando') return null;
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <>
+      <EscuchaDeAvisos />
+      <Stack screenOptions={{ headerShown: false }}>
       {/* Stack.Protected: si el guard es falso, esas rutas NO existen. Con la sesión
           bloqueada sólo existe la pantalla de bloqueo, así que no se puede entrar a
           la app ni escribiendo la dirección de otra pantalla. */}
@@ -52,7 +56,8 @@ function Navegacion() {
         <Stack.Screen name="mi-comercio/resenas" />
         <Stack.Screen name="mi-comercio/responder" options={{ presentation: 'modal' }} />
       </Stack.Protected>
-    </Stack>
+      </Stack>
+    </>
   );
 }
 
@@ -74,7 +79,11 @@ export default function RootLayout() {
                 envía solas cuando vuelve internet. Va adentro de SesionProvider porque necesita
                 saber quién es la persona. */}
             <PendientesProvider>
-              <Navegacion />
+              {/* Los avisos de promo por vencer (notificaciones locales). Necesita la sesión y el
+                  directorio, por eso va adentro de los dos. */}
+              <AvisosProvider>
+                <Navegacion />
+              </AvisosProvider>
             </PendientesProvider>
           </DirectorioProvider>
         </UbicacionProvider>
