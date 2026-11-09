@@ -23,6 +23,11 @@ export interface DatosFicha {
   whatsapp?: string | null;
   instagram?: string | null;
   mediosDePago?: MedioDePago[];
+  // Reemplaza la lista ENTERA de tramos.
+  horarios?: Horario[];
+  // Cierre por vacaciones: último día cerrado ("2026-12-31"), o null para levantarlo. Es un
+  // dato que sólo se manda: la API nunca lo devuelve (mientras dura, `horarios` llega vacío).
+  cerradoHasta?: string | null;
 }
 
 export interface Comercio {
