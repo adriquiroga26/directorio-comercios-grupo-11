@@ -1,7 +1,7 @@
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { Link, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,6 +11,7 @@ import { FiltroRubros } from '@/components/FiltroRubros';
 import { TarjetaComercio } from '@/components/TarjetaComercio';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { MAPA_DISPONIBLE } from '@/constants/mapa';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useDirectorio } from '@/directorio/DirectorioProvider';
@@ -20,9 +21,80 @@ import { regionAlrededorDe, regionQueAbarca } from '@/utilidades/mapa';
 
 const COLOR_PERSONA = '#1E6FEB';
 
+// La pestaña Mapa. Si la app no tiene clave de Google Maps (ver constants/mapa.ts), crear el mapa
+// la cerraría: en ese caso se muestra un aviso con la lista de comercios. Son dos componentes
+// distintos porque los hooks no se pueden llamar "a veces".
+export default function MapaScreen() {
+  return MAPA_DISPONIBLE ? <MapaConGoogle /> : <MapaSinClave />;
+}
+
+// Plan B cuando no hay mapa: explica el motivo y deja ver los comercios en una lista.
+function MapaSinClave() {
+  const theme = useTheme();
+  const { posicion } = useUbicacion();
+  const { estado, comercios, rubros, mensajeError, reintentar } = useDirectorio();
+  const rubroPorId = new Map(rubros.map((rubro) => [rubro.id, rubro]));
+
+  return (
+    <ThemedView style={styles.contenedor}>
+      <SafeAreaView style={styles.contenedor} edges={['top']}>
+        <View style={[styles.avisoSinMapa, { backgroundColor: theme.backgroundElement }]}>
+          <ThemedText type="smallBold">El mapa no está disponible en esta versión</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Esta versión de la app no tiene la clave de Google Maps. Mientras tanto podés ver los
+            comercios en esta lista.
+          </ThemedText>
+        </View>
+
+        {estado === 'cargando' && (
+          <View style={styles.centrado}>
+            <ThemedText themeColor="textSecondary">Cargando…</ThemedText>
+          </View>
+        )}
+
+        {estado === 'error' && (
+          <View style={styles.centrado}>
+            <ThemedText themeColor="textSecondary" style={styles.textoCentrado}>
+              {mensajeError}
+            </ThemedText>
+            <Pressable
+              onPress={reintentar}
+              accessibilityRole="button"
+              hitSlop={8}
+              style={[styles.botonReintentar, { backgroundColor: theme.backgroundElement }]}>
+              <ThemedText type="smallBold">Reintentar</ThemedText>
+            </Pressable>
+          </View>
+        )}
+
+        {estado === 'listo' && (
+          <FlatList
+            data={comercios}
+            keyExtractor={(comercio) => comercio.id}
+            contentContainerStyle={styles.listaSinMapa}
+            renderItem={({ item }) => (
+              <Link href={`/comercios/${item.id}`} asChild>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ver ficha de ${item.nombre}`}>
+                  <TarjetaComercio
+                    comercio={item}
+                    rubro={rubroPorId.get(item.rubroId) ?? null}
+                    distanciaM={posicion === null ? null : distanciaEnMetros(posicion, item.coordenadas)}
+                  />
+                </Pressable>
+              </Link>
+            )}
+          />
+        )}
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
 // Los comercios sobre un mapa, con la persona ubicada y un filtro por rubro (lo que pide el
 // PRD). La ubicación es opcional: sin ella el mapa se ve igual, sólo que no aparece la persona.
-export default function MapaScreen() {
+function MapaConGoogle() {
   const theme = useTheme();
   const { posicion, actualizarSiHaceFalta } = useUbicacion();
 
@@ -268,5 +340,16 @@ const styles = StyleSheet.create({
   tarjetaElegida: {
     borderRadius: Spacing.three,
     elevation: 4,
+  },
+  avisoSinMapa: {
+    gap: Spacing.one,
+    margin: Spacing.three,
+    padding: Spacing.three,
+    borderRadius: Spacing.three,
+  },
+  listaSinMapa: {
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.four,
   },
 });
