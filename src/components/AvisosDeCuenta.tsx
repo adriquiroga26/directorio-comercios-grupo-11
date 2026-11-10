@@ -80,8 +80,8 @@ export function AvisosDeCuenta() {
     <View style={[styles.tarjeta, { backgroundColor: theme.backgroundElement }]}>
       <ThemedText type="smallBold">Avisos</ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
-        Te avisamos un día antes de que venza una promoción de tus comercios favoritos o de tus rubros
-        de interés.
+        Te avisamos cuando aparece una promoción nueva de tus comercios favoritos o de tus rubros de
+        interés, y un día antes de que venza.
       </ThemedText>
 
       <Pressable

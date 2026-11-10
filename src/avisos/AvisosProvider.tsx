@@ -52,6 +52,9 @@ export function AvisosProvider({ children }: { children: ReactNode }) {
   // Hasta que no se lee el permiso por primera vez, `permiso` es sólo el valor de arranque: no se
   // puede decidir nada con él (si no, se sacarían los avisos programados antes de saber si hay permiso).
   const [permisoLeido, setPermisoLeido] = useState(false);
+  // Cuántas veces la app volvió al primer plano. Sirve para volver a mirar si hay promociones nuevas
+  // cada vez que la persona regresa a la app (el límite de 5 minutos evita pedir de más).
+  const [regresos, setRegresos] = useState(0);
 
   // El permiso se mira al abrir la app y cada vez que vuelve al primer plano (por ejemplo, después
   // de activarlo en los Ajustes). Se cambia el estado cuando llega la respuesta, no en el efecto.
@@ -66,7 +69,10 @@ export function AvisosProvider({ children }: { children: ReactNode }) {
     };
     mirar();
     const suscripcion = AppState.addEventListener('change', (actual) => {
-      if (actual === 'active') mirar();
+      if (actual === 'active') {
+        mirar();
+        setRegresos((antes) => antes + 1);
+      }
     });
     return () => suscripcion.remove();
   }, []);
@@ -141,6 +147,7 @@ export function AvisosProvider({ children }: { children: ReactNode }) {
     permisoLeido,
     hayInternet,
     comercios,
+    regresos,
   ]);
 
   return <AvisosContext.Provider value={{ permiso, pedirPermiso }}>{children}</AvisosContext.Provider>;
